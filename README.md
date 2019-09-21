@@ -1,6 +1,10 @@
 # RedisCplusPlus
 Redis implentation using c++.
 
-Base datastructure
-Memory optmization
-Cluster 
+Feature
+
+1.Base datastructure
+
+2.Memory optmization
+
+3.Cluster 
