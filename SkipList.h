@@ -2,6 +2,7 @@
 #define SKIPLIST_H
 
 #include <vector>
+#include <limits>
 
 namespace Redis
 {
@@ -12,12 +13,20 @@ const double  ZSKIPLIST_P  = 0.25;      /* Skiplist P = 1/4 */
 template <typename T>
 struct SkipListNode
 {
-    std::vector<SkipListNode *> mLevels;
+    std::vector<SkipListNode *> mNexts;
     SkipListNode* mBackword;
     T mValue;
     double mScore;
-    int mSpan;
-    SkipListNode(const T& v, double s): mValue(v), mScore(s){}
+    std::vector<int> mSpans;
+    SkipListNode(const T& v, double s, int l): mBackword(nullptr), mValue(v), mScore(s){
+        mNexts.resize(l);
+        mSpans.resize(l);
+    }
+    SkipListNode(double s): mBackword(nullptr), mScore(s){}
+    void setLevelNum(int l){ 
+        mNexts.resize(l);
+        mSpans.resize(l);
+    }
 };
 
 template <typename T>
@@ -41,14 +50,18 @@ public:
 private:
     int generateRandomLevel(void);
 private:
-    SkipListNode<T> *mHead, *mTail;
+    SkipListNode<T> *mHead, *mTail; //mhead and mtail is dummy node for code elegant
     int mMaxLevel;
     int mLength;
 };
 
 template<typename T>
-SkipList<T>::SkipList(): mHead(nullptr), mTail(nullptr), mMaxLevel(0), mLength(0) {
-    
+SkipList<T>::SkipList(): mMaxLevel(0), mLength(0) {
+    mHead = new SkipListNode<T>(numeric_limits<double>::min());
+    mTail = new SkipListNode<T>(numeric_limits<double>::max());
+    mHead->setLevelNum(1);
+    mHead->mNexts[0] = mTail;
+    mTail->setLevelNum(1);
 }
 
 
@@ -67,8 +80,44 @@ int SkipList<T>::generateRandomLevel(void) {
 
 template<typename T>
 bool SkipList<T>::insert(const T& v, double s){
-    auto newNode = new SkipListNode(v, s);
+    int level = generateRandomLevel();
+    auto newNode = new SkipListNode(v, s, level);
+    int currLevel = this->mMaxLevel;
+    SkipListNode* nd = this->mHead;
+    vector<SkipListNode*> prevs(level, nullptr);
+    vector<int> ranks(level, 0);
+    //find the node just before insert node in each level
+    while(currLevel >= 0 && nd) {
+        if(nd->mValue <= v && nd->mNexts[currLevel]->mValue > v){
+            if(currLevel <= level){
+                prevs[currLevel] = nd;
+            }
+            currLevel--;
+        }else{
+            ranks[currLevel] += nd->mSpans[currLevel];
+            nd = nd->mNexts[currLevel];
+        }
+    }
 
+    //add pre node for the level who is higher than curr max level.
+    if(level > this->mMaxLevel){
+        mHead->setLevelNum(level);
+        for(int i = level; i > this->mMaxLevel; i--){
+            prevs[i].levels[i] = mHead;
+        }
+    }
+
+    //update pointer and span for each pre, insert node. update the backward pointer.
+    for(int i = 0; i <= level; i++){
+        auto next = prevs[i]->mNexts[i];
+        prevs[i]->mNexts[i] = newNode;
+        newNode->mNexts[i] = next;
+        newNode->mSpans[i] = prevs[i]->mSpans[i] - (ranks[0] - ranks[i]) ;
+        prevs[i]->mSpans[i] = ranks[0] - ranks[i] + 1;
+        next->mBackword = newNode;
+        newNode->mBackword = prevs[i];
+    }
+    this->mLength += 1;
 }
 
 template<typename T>
