@@ -22,7 +22,7 @@ struct SkipListNode
         mNexts.resize(l);
         mSpans.resize(l);
     }
-    SkipListNode(double s): mBackword(nullptr), mScore(s){}
+    SkipListNode(const T&v, double s): mValue(v), mBackword(nullptr), mScore(s){}
     void setLevelNum(int l){ 
         mNexts.resize(l);
         mSpans.resize(l);
@@ -57,8 +57,9 @@ private:
 
 template<typename T>
 SkipList<T>::SkipList(): mMaxLevel(0), mLength(0) {
-    mHead = new SkipListNode<T>(numeric_limits<double>::min());
-    mTail = new SkipListNode<T>(numeric_limits<double>::max());
+    T a;
+    mHead = new SkipListNode<T>(a, std::numeric_limits<double>::min());
+    mTail = new SkipListNode<T>(a, std::numeric_limits<double>::max());
     mHead->setLevelNum(1);
     mHead->mNexts[0] = mTail;
     mTail->setLevelNum(1);
@@ -118,6 +119,7 @@ bool SkipList<T>::insert(const T& v, double s){
         newNode->mBackword = prevs[i];
     }
     this->mLength += 1;
+    reutrn true;
 }
 
 template<typename T>
@@ -126,7 +128,9 @@ SkipListNode<T>* SkipList<T>::query(double s){
 }
 
 template<typename T>    
-std::vector<SkipListNode<T>> SkipList<T>::queryRange(double minmScore, double maxmScore);
+std::vector<SkipListNode<T>> SkipList<T>::queryRange(double minmScore, double maxmScore){
+
+}
 
 }; // namespace Redis
 
