@@ -3,8 +3,8 @@ Redis implentation using c++.
 
 Feature
 
-1.Base datastructure
+1.Base datastructure and memory optmization
 
-2.Memory optmization
+2.IO model(change to c++ version netty)
 
-3.Cluster 
+3.Cluster(raft master elaction and slot partion)
