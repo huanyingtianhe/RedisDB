@@ -9,6 +9,7 @@ namespace Redis
 
 const int ZSKIPLIST_MAXLEVEL  = 64;     /* Should be enough for 2^64 elements */
 const double  ZSKIPLIST_P  = 0.25;      /* Skiplist P = 1/4 */
+const double ep = 1e-6;
 
 template <typename T>
 struct SkipListNode
@@ -45,10 +46,14 @@ public:
     int getLength() { return mLength; }
 
     bool insert(const T &v, double mScore);
-    SkipListNode<T> *query(double s);
-    std::vector<SkipListNode<T>> queryRange(double minmScore, double maxmScore);
+    SkipListNode<T>* queryFirstInRange(double minScore, double maxScore);
+    SkipListNode<T>* queryLastInRange(double minScore, double maxScore);
+    int getRank(double score, const T& v);
+
 private:
     int generateRandomLevel(void);
+    //only check the start of the list, because tail is not valid.
+    bool isInRange(double minScore, double maxScore);
 private:
     SkipListNode<T> *mHead, *mTail; //mhead and mtail is dummy node for code elegant
     int mMaxLevel;
@@ -73,7 +78,7 @@ SkipList<T>::~SkipList() {
 
 template<typename T>
 int SkipList<T>::generateRandomLevel(void) {
-    int level = 1;
+    int level = 0;
     while ((random()&0xFFFF) < (ZSKIPLIST_P * 0xFFFF))
         level += 1;
     return (level<ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;
@@ -123,14 +128,80 @@ bool SkipList<T>::insert(const T& v, double s){
 }
 
 template<typename T>
-SkipListNode<T>* SkipList<T>::query(double s){
-
+bool SkipList<T>::isInRange(double minScore, double maxScore){
+    if(minScore > maxScore) return false;
+    SkipListNode<T> *first = this->mHead->mNexts[0];
+    if(maxScore < first->mValue) return false;
+    return true;
 }
 
-template<typename T>    
-std::vector<SkipListNode<T>> SkipList<T>::queryRange(double minmScore, double maxmScore){
 
+template<typename T>
+SkipListNode<T>* SkipList<T>::queryFirstInRange(double minScore, double maxScore){
+    if(!isInRange(minScore, maxScore)) return nullptr;
+    SkipListNode<T>* nd = this->mHead;
+    for(int level = this->mMaxLevel; level >= 0; ){
+        SkipListNode<T>* next = nd->mNexts[level];
+        if(!next) break;
+        if(next->mScore >= minScore && next->mScore < maxScore){
+            level--;
+            continue;
+        }else if(next->mScore >= maxScore){
+            break;
+        }else{
+            nd = next;
+        }
+    }
+    return nd ? ((nd->mScore >= minScore && nd->mScore < maxScore) ? nd : nullptr) : nullptr;
 }
+
+template<typename T>
+SkipListNode<T>* SkipList<T>::queryLastInRange(double minmScore, double maxmScore){
+    if(!isInRange(minScore, maxScore)) return nullptr;
+    SkipListNode<T>* nd = this->mHead;
+    for(int level = this->mMaxLevel; level >= 0;){
+        SkipListNode<T>* next = nd->mNexts[level];
+        if(!next) break;
+        if(next->mScore >= maxScore){
+            level--;
+            continue;
+        }else{
+            nd = next;
+        }
+    }
+    return nd ? ((nd->mScore >= minScore && nd->mScore < maxScore) ? nd : nullptr) : nullptr;
+}
+
+bool doubleEqual(double d1, double d2) {
+    return fabs(d1 - d2) < ep;
+}
+
+template<typename T>
+int SkipList<T>::getRank(double score, const T& v){
+    int result = 0;
+    SkipListNode<T>* nd = this->mHead;
+    for(int level = this->mMaxLevel; level >= 0; ){
+        SkipListNode<T>* next = nd->mNexts[level];
+        if(doubleEqual(next->mScore, score)){
+            if(next->mValue == v){
+                result += nd->mSpans[level];
+                return result;
+            }
+            else{
+                level--;
+                continue;
+            }
+        }else if(next->mScore < score){
+            result += nd->mSpans[level];
+            nd = next;
+        }else{
+            return 0;
+        }
+
+    }
+    return 0;
+}
+
 
 }; // namespace Redis
 
