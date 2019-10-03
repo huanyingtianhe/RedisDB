@@ -54,6 +54,7 @@ private:
     int generateRandomLevel(void);
     //only check the start of the list, because tail is not valid.
     bool isInRange(double minScore, double maxScore);
+    bool doubleEqual(double d1, double d2) {return fabs(d1 - d2) < ep;}
 private:
     SkipListNode<T> *mHead, *mTail; //mhead and mtail is dummy node for code elegant
     int mMaxLevel;
@@ -170,10 +171,6 @@ SkipListNode<T>* SkipList<T>::queryLastInRange(double minmScore, double maxmScor
         }
     }
     return nd ? ((nd->mScore >= minScore && nd->mScore < maxScore) ? nd : nullptr) : nullptr;
-}
-
-bool doubleEqual(double d1, double d2) {
-    return fabs(d1 - d2) < ep;
 }
 
 template<typename T>
