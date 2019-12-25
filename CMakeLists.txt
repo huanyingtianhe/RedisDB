@@ -9,3 +9,6 @@ include(CPack)
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 add_subdirectory(${PROJECT_SOURCE_DIR}/3rd/googletest-master)
 add_subdirectory(${PROJECT_SOURCE_DIR}/test)
+
+enable_testing ()
+add_test (NAME MyTest COMMAND ReistCPlusPlusTest)

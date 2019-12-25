@@ -34,8 +34,9 @@ template <typename T>
 class SkipList
 {
 public:
+    using  iterator = Iterator<T>;
     SkipList();
-    ~SkipList();
+    ~SkipList()noexcept;
     SkipList(const SkipList &skiplist) = delete;
     SkipList(SkipList &&skiplist) = delete;
     SkipList &operator=(const SkipList &skiplist) = delete;
@@ -45,11 +46,15 @@ public:
     void setMaxLevel(int ml) { mMaxLevel = ml; }
     int getLength() { return mLength; }
 
-    bool insert(const T &v, double mScore);
+    bool insert(const T &v, double score);
+    bool erase(const T &v, double scroe);
     SkipListNode<T>* queryFirstInRange(double minScore, double maxScore);
     SkipListNode<T>* queryLastInRange(double minScore, double maxScore);
     int getRank(double score, const T& v);
 
+    iterator begin();
+    iterator end();
+    iterator next();
 private:
     int generateRandomLevel(void);
     //only check the start of the list, because tail is not valid.
@@ -68,17 +73,19 @@ SkipList<T>::SkipList(): mMaxLevel(0), mLength(0) {
     mTail = new SkipListNode<T>(a, std::numeric_limits<double>::max());
     mHead->setLevelNum(1);
     mHead->mNexts[0] = mTail;
-    mTail->setLevelNum(1);
 }
 
 
 template<typename T>
-SkipList<T>::~SkipList() {
-
+SkipList<T>::~SkipList()noexcept {
+    if(mHead) delete mHead;
+    mHead = nullptr;
+    if(mTail) delete mTail;
+    mTail = nullptr;
 }
 
 template<typename T>
-int SkipList<T>::generateRandomLevel(void) {
+int SkipList<T>::generateRandomLevel() {
     int level = 0;
     while ((random()&0xFFFF) < (ZSKIPLIST_P * 0xFFFF))
         level += 1;
@@ -89,16 +96,16 @@ template<typename T>
 bool SkipList<T>::insert(const T& v, double s){
     int level = generateRandomLevel();
     auto newNode = new SkipListNode(v, s, level);
-    int currLevel = this->mMaxLevel;
     SkipListNode* nd = this->mHead;
-    vector<SkipListNode*> prevs(level, nullptr);
-    vector<int> ranks(level, 0);
+    int newMaxLevel = std::max(this->mMaxLevel, level);
+    vector<SkipListNode*> prevs(newMaxLevel, nullptr);
+    vector<int> ranks(newMaxLevel, 0);
     //find the node just before insert node in each level
-    while(currLevel >= 0 && nd) {
-        if(nd->mValue <= v && nd->mNexts[currLevel]->mValue > v){
-            if(currLevel <= level){
-                prevs[currLevel] = nd;
-            }
+    int currLevel = this->mMaxLevel;
+    while(currLevel >= 0) {
+        //because of the mtail infinate large, we need not to do next pointer null judge 
+        if(nd->mScore <= s && nd->mNexts[currLevel]->mScore > v){
+            prevs[currLevel] = nd;
             currLevel--;
         }else{
             ranks[currLevel] += nd->mSpans[currLevel];
@@ -109,13 +116,14 @@ bool SkipList<T>::insert(const T& v, double s){
     //add pre node for the level who is higher than curr max level.
     if(level > this->mMaxLevel){
         mHead->setLevelNum(level);
-        for(int i = level; i > this->mMaxLevel; i--){
-            prevs[i].levels[i] = mHead;
+        for(int i = level + 1; i > this->mMaxLevel; i--){
+            prevs[i] = mHead;
+            mHead->mNexts[i] = mTail;
         }
     }
 
     //update pointer and span for each pre, insert node. update the backward pointer.
-    for(int i = 0; i <= level; i++){
+    for(int i = 0; i <= newMaxLevel; i++){
         auto next = prevs[i]->mNexts[i];
         prevs[i]->mNexts[i] = newNode;
         newNode->mNexts[i] = next;
@@ -125,6 +133,49 @@ bool SkipList<T>::insert(const T& v, double s){
         newNode->mBackword = prevs[i];
     }
     this->mLength += 1;
+    reutrn true;
+}
+
+template<typename T>
+bool SkipList<T>::erase(const T& v, double s){
+    int level = generateRandomLevel();
+    SkipListNode* nd = this->mHead;
+    int newMaxLevel = std::max(this->mMaxLevel, level);
+    vector<SkipListNode*> prevs(newMaxLevel, nullptr);
+    //find the node just before insert node in each level
+    int currLevel = this->mMaxLevel;
+    while(currLevel >= 0) {
+        //because of the mtail infinate large, we need not to do next pointer null judge 
+        if(nd->mScore <= s && nd->mNexts[currLevel]->mScore > v){
+            prevs[currLevel] = nd;
+            currLevel--;
+        }else{
+            nd = nd->mNexts[currLevel];
+        }
+    }
+    if(nd->mScore != s || nd->mValue != v) return false;
+    //add pre node for the level who is higher than curr max level.
+    if(level > this->mMaxLevel){
+        mHead->setLevelNum(level);
+        for(int i = level+1; i > this->mMaxLevel; i--){
+            prevs[i] = mHead;
+            mHead->mNexts[i] = mTail;
+        }
+    }
+
+    //update pointer and span for each pre, insert node. update the backward pointer.
+    for(int i = 0; i <= newMaxLevel; i++){
+        if(prevs[i]->mNexts[i] == nd){
+            prevs[i]->mSpans[i] += nd->mSpans[i] - 1;
+            prevs[i]->mNexts[i] = nd->mNexts[i];
+            nd->mNexts[i]->mBackword = prevs[i];
+        }else{
+            prevs[i]->mSpans[i]--;
+        }
+    }
+    //if the highlist level is null, we need shrink the list maxLevel.
+    while(this->mMaxLevel >= 0 && this->mHead->mNexts[this->mMaxLevel] == mTail) this->mMaxLevel--;
+    this->mLength -= 1;
     reutrn true;
 }
 
