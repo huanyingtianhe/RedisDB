@@ -9,7 +9,7 @@ namespace Redis
 
 const int ZSKIPLIST_MAXLEVEL  = 64;     /* Should be enough for 2^64 elements */
 const double  ZSKIPLIST_P  = 0.25;      /* Skiplist P = 1/4 */
-const double ep = 1e-6;
+const double EP = 1e-6;
 
 template <typename T>
 struct SkipListNode
@@ -20,8 +20,7 @@ struct SkipListNode
     double mScore;
     std::vector<int> mSpans;
     SkipListNode(const T& v, double s, int l): mBackword(nullptr), mValue(v), mScore(s){
-        mNexts.resize(l);
-        mSpans.resize(l);
+        setLevelNum(l);
     }
     SkipListNode(const T&v, double s): mValue(v), mBackword(nullptr), mScore(s){}
     void setLevelNum(int l){ 
@@ -112,36 +111,40 @@ bool SkipList<T>::insert(const T& v, double s){
             nd = nd->mNexts[currLevel];
         }
     }
-
     //add pre node for the level who is higher than curr max level.
     if(level > this->mMaxLevel){
         mHead->setLevelNum(level);
         for(int i = level + 1; i > this->mMaxLevel; i--){
             prevs[i] = mHead;
             mHead->mNexts[i] = mTail;
+            mHead->mSpans[i] = this->mLength;
         }
     }
-
     //update pointer and span for each pre, insert node. update the backward pointer.
     for(int i = 0; i <= newMaxLevel; i++){
         auto next = prevs[i]->mNexts[i];
-        prevs[i]->mNexts[i] = newNode;
-        newNode->mNexts[i] = next;
-        newNode->mSpans[i] = prevs[i]->mSpans[i] - (ranks[0] - ranks[i]) ;
-        prevs[i]->mSpans[i] = ranks[0] - ranks[i] + 1;
-        next->mBackword = newNode;
-        newNode->mBackword = prevs[i];
+        if(i <= level) {
+            newNode->mSpans[i] = prevs[i]->mSpans[i] - (ranks[0] - ranks[i]) ;
+            prevs[i]->mSpans[i] = ranks[0] - ranks[i] + 1;
+            prevs[i]->mNexts[i] = newNode;
+            newNode->mNexts[i] = next;
+            next->mBackword = newNode;
+            newNode->mBackword = prevs[i];
+        }else{
+            prevs[i]->mSpans[i]++;
+        }
     }
+    //update max level
+    this->mMaxLevel = newMaxLevel;
+    //update list node len
     this->mLength += 1;
     reutrn true;
 }
 
 template<typename T>
 bool SkipList<T>::erase(const T& v, double s){
-    int level = generateRandomLevel();
     SkipListNode* nd = this->mHead;
-    int newMaxLevel = std::max(this->mMaxLevel, level);
-    vector<SkipListNode*> prevs(newMaxLevel, nullptr);
+    vector<SkipListNode*> prevs(this->mMaxLevel, nullptr);
     //find the node just before insert node in each level
     int currLevel = this->mMaxLevel;
     while(currLevel >= 0) {
@@ -153,18 +156,10 @@ bool SkipList<T>::erase(const T& v, double s){
             nd = nd->mNexts[currLevel];
         }
     }
-    if(nd->mScore != s || nd->mValue != v) return false;
-    //add pre node for the level who is higher than curr max level.
-    if(level > this->mMaxLevel){
-        mHead->setLevelNum(level);
-        for(int i = level+1; i > this->mMaxLevel; i--){
-            prevs[i] = mHead;
-            mHead->mNexts[i] = mTail;
-        }
-    }
-
+    //if node not exist return
+    if(fabs(nd->mScore - s) < EP || nd->mValue != v) return false;
     //update pointer and span for each pre, insert node. update the backward pointer.
-    for(int i = 0; i <= newMaxLevel; i++){
+    for(int i = 0; i <= this->mMaxLevel; i++){
         if(prevs[i]->mNexts[i] == nd){
             prevs[i]->mSpans[i] += nd->mSpans[i] - 1;
             prevs[i]->mNexts[i] = nd->mNexts[i];
@@ -175,6 +170,7 @@ bool SkipList<T>::erase(const T& v, double s){
     }
     //if the highlist level is null, we need shrink the list maxLevel.
     while(this->mMaxLevel >= 0 && this->mHead->mNexts[this->mMaxLevel] == mTail) this->mMaxLevel--;
+    //update list len
     this->mLength -= 1;
     reutrn true;
 }
