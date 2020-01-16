@@ -4,6 +4,7 @@
 #include <vector>
 #include <limits>
 #include <iterator>
+#include <cstdlib>
 
 namespace Redis
 {
@@ -13,10 +14,10 @@ class RedisIterator : public std::iterator<std::bidirectional_iterator_tag, T, p
 {
 public:
     RedisIterator(T *ptr) : m_ptr(ptr) {}
-    RedisIterator(const RedisIterator<T> &other) = default;
-    RedisIterator &operator=(const RedisIterator &other) = default;
-    RedisIterator(RedisIterator<T> &&other) = delete;
-    RedisIterator &operator=(RedisIterator &&other) = delete;
+    RedisIterator(const RedisIterator<T> &other){ m_ptr = other.m_ptr;};
+    RedisIterator<T> &operator = (const RedisIterator<T> &other){ m_ptr = other.m_ptr;};
+    //RedisIterator(RedisIterator<T> &&other) = delete;
+    //RedisIterator<T> &operator = (RedisIterator<T> &&other) = delete;
     ~RedisIterator() {}
 
     T &operator*() { return *m_ptr; }
@@ -35,13 +36,13 @@ public:
         m_ptr = m_ptr->mBackword;
         return (*this);
     }
-    RedisIterator<T> operator++()
+    RedisIterator<T> operator++(int)
     {
         auto temp(*this);
         m_ptr = m_ptr->mNexts[0];
         return temp;
     }
-    RedisIterator<T> operator--()
+    RedisIterator<T> operator--(int)
     {
         auto temp(*this);
         m_ptr = m_ptr->mBackword;
@@ -58,6 +59,7 @@ template <typename T>
 class RedisReverseIterator : public RedisIterator<T>
 {
 public:
+    RedisReverseIterator<T>(T *ptr):RedisIterator(ptr){}
     RedisReverseIterator<T> &operator++()
     {
         m_ptr = m_ptr->mBackword;
@@ -68,13 +70,13 @@ public:
         m_ptr = m_ptr->mNexts[0];
         return (*this);
     }
-    RedisReverseIterator<T> operator++()
+    RedisReverseIterator<T> operator++(int)
     {
         auto temp(*this);
         m_ptr = m_ptr->mBackword;
         return temp;
     }
-    RedisReverseIterator<T> operator--()
+    RedisReverseIterator<T> operator--(int)
     {
         auto temp(*this);
         m_ptr = m_ptr->mNexts[0];
@@ -98,11 +100,11 @@ struct SkipListNode
     {
         setLevelNum(l);
     }
-    SkipListNode(const Key &k, const Value &v) : mValue(v), mBackword(nullptr), mKey(s) {}
+    SkipListNode(const Key &k, const Value &v) : mKey(k), mValue(v), mBackword(nullptr) {}
     void setLevelNum(int l)
     {
-        mNexts.resize(l);
-        mSpans.resize(l);
+        mNexts.resize(l, nullptr);
+        mSpans.resize(l, 0);
     }
 };
 
@@ -113,11 +115,11 @@ class SkipList
 public:
     using iterator = RedisIterator<SkipListNode<Key, Value>>;
     using const_iterator = RedisIterator<const SkipListNode<Key, Value>>;
-    using reverse_iterator = RedisIterator<SkipListNode<Key, Value>>;
+    using reverse_iterator = RedisReverseIterator<SkipListNode<Key, Value>>;
     using const_reverse_iterator = RedisReverseIterator<const SkipListNode<Key, Value>>;
     SkipList();
     ~SkipList() noexcept;
-    SkipList(const SkipList<Key, Value> &skiplist) = delete;
+    SkipList(const SkipList<Key, Value> &skiplist) = delete                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ;
     SkipList(SkipList<Key, Value> &&skiplist) = delete;
     SkipList &operator=(const SkipList<Key, Value> &skiplist) = delete;
     SkipList &operator=(SkipList<Key, Value> &&skiplist) = delete;
@@ -132,13 +134,13 @@ public:
     SkipListNode<Key, Value> *upper_bound(const Key &k);
     int getRank(const Key &k);
     //iterators of skiplist
-    iterator begin() { return iterator(mHead); }
+    iterator begin() { return iterator(mHead->mNexts[0]); }
     iterator end() { return iterator(mTail); }
-    const_iterator cbegin() { return const_iterator(mHead); }
+    const_iterator cbegin() { return const_iterator(mHead->mNexts[0]); }
     const_iterator cend() { return const_iterator(mTail); }
-    reverse_iterator rbegin() { return reverse_iterator(mTail); }
+    reverse_iterator rbegin() { return reverse_iterator(mTail->mBackword); }
     reverse_iterator rend() { return reverse_iterator(mHead); }
-    const_reverse_iterator crbegin() { return const_reverse_iterator(mTail); }
+    const_reverse_iterator crbegin() { return const_reverse_iterator(mTail->mBackword); }
     const_reverse_iterator crend() { return const_reverse_iterator(mHead); }
 
 private:
@@ -162,6 +164,7 @@ SkipList<Key, Value>::SkipList(): mMaxLevel(0), mLength(0)
     mHead = new SkipListNode<Key, Value>(k, v);
     mTail = new SkipListNode<Key, Value>(k, v);
     mHead->setLevelNum(1);
+    mTail->setLevelNum(1);
     mHead->mNexts[0] = mTail;
     mTail->mBackword = mHead;
 }
@@ -169,13 +172,12 @@ SkipList<Key, Value>::SkipList(): mMaxLevel(0), mLength(0)
 template <typename Key, typename Value>
 SkipList<Key, Value>::~SkipList() noexcept
 {
-    while (auto it = begin(); it != end(); it++)
-    {
+    for(auto it = mHead; it != nullptr;){
+        auto next = it->mNexts[0];
         delete it;
+        it = next;
     }
     mHead = nullptr;
-    if (mTail)
-        delete mTail;
     mTail = nullptr;
 }
 
@@ -183,7 +185,7 @@ template <typename Key, typename Value>
 int SkipList<Key, Value>::generateRandomLevel()
 {
     int level = 0;
-    while ((random() & 0xFFFF) < (ZSKIPLIST_P * 0xFFFF))
+    while ((std::rand() & 0xFFFF) < (ZSKIPLIST_P * 0xFFFF))
         level += 1;
     return (level < ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL - 1;
 }
@@ -192,17 +194,17 @@ template <typename Key, typename Value>
 bool SkipList<Key, Value>::insert(const Key &k, const Value &v)
 {
     int level = generateRandomLevel();
-    auto newNode = new SkipListNode(k, v, level);
-    SkipListNode *nd = this->mHead;
+    auto newNode = new SkipListNode<Key, Value>(k, v, level+1);
+    SkipListNode<Key, Value> *nd = this->mHead;
     int newMaxLevel = std::max(this->mMaxLevel, level);
-    vector<SkipListNode *> prevs(newMaxLevel, nullptr);
-    vector<int> ranks(newMaxLevel, 0);
+    std::vector<SkipListNode<Key, Value> *> prevs(newMaxLevel+1, nullptr);
+    std::vector<int> ranks(newMaxLevel+1, 0);
     //find the node just before insert node in each level
     int currLevel = this->mMaxLevel;
     while (currLevel >= 0)
     {
         //because of the mtail infinate large, we need not to do next pointer null judge
-        if (nd->mKey <= k && nd->mNexts[currLevel]->mKey > k)
+        if (nd->mNexts[currLevel] == mTail || ((nd == mHead || nd->mKey <= k) && nd->mNexts[currLevel]->mKey > k))
         {
             prevs[currLevel] = nd;
             currLevel--;
@@ -216,7 +218,7 @@ bool SkipList<Key, Value>::insert(const Key &k, const Value &v)
     //add pre node for the level who is higher than curr max level.
     if (level > this->mMaxLevel)
     {
-        mHead->setLevelNum(level);
+        mHead->setLevelNum(level+1);
         for (int i = level; i > this->mMaxLevel; i--)
         {
             prevs[i] = mHead;
@@ -247,20 +249,20 @@ bool SkipList<Key, Value>::insert(const Key &k, const Value &v)
     this->mMaxLevel = newMaxLevel;
     //update list node len
     this->mLength += 1;
-    reutrn true;
+    return true;
 }
 
 template <typename Key, typename Value>
 bool SkipList<Key, Value>::erase(const Key &k)
 {
-    SkipListNode *nd = this->mHead;
-    vector<SkipListNode *> prevs(this->mMaxLevel, nullptr);
+    SkipListNode<Key, Value> *nd = this->mHead;
+    std::vector<SkipListNode<Key, Value> *> prevs(this->mMaxLevel+1, nullptr);
     //find the node just before insert node in each level
     int currLevel = this->mMaxLevel;
     while (currLevel >= 0)
     {
         //because of the mtail infinate large, we need not to do next pointer null judge
-        if (nd->mKey <= k && nd->mNexts[currLevel]->mKey > k)
+        if (nd->mNexts[currLevel] == mTail || ((nd == mHead || nd->mKey < k) && nd->mNexts[currLevel]->mKey >= k))
         {
             prevs[currLevel] = nd;
             currLevel--;
@@ -271,7 +273,8 @@ bool SkipList<Key, Value>::erase(const Key &k)
         }
     }
     //if node not exist return
-    if (nd->mKey != k)
+    nd = nd->mNexts[0];
+    if (nd == mTail || nd->mKey != k)
         return false;
     //update pointer and span for each pre, insert node.
     for (int i = 0; i <= this->mMaxLevel; i++)
@@ -289,11 +292,11 @@ bool SkipList<Key, Value>::erase(const Key &k)
     //update the backward pointer.
     nd->mNexts[0]->mBackword = prevs[0];
     //if the highlist level is null, we need shrink the list maxLevel.
-    while (this->mMaxLevel >= 0 && this->mHead->mNexts[this->mMaxLevel] == mTail)
+    while (this->mMaxLevel > 0 && this->mHead->mNexts[this->mMaxLevel] == mTail)
         this->mMaxLevel--;
     //update list len
     this->mLength--;
-    reutrn true;
+    return true;
 }
 
 template <typename Key, typename Value>
@@ -317,7 +320,7 @@ SkipListNode<Key, Value> *SkipList<Key, Value>::lower_bound(const Key &k)
     for (int level = this->mMaxLevel; level >= 0;)
     {
         SkipListNode<Key, Value> *next = nd->mNexts[level];
-        if (next->mKey <= k && next->mKey > k)
+        if (next == mTail || ((nd == mHead || nd->mKey < k) && next->mKey >= k))
         {
             level--;
             continue;
@@ -327,7 +330,7 @@ SkipListNode<Key, Value> *SkipList<Key, Value>::lower_bound(const Key &k)
             nd = next;
         }
     }
-    return nd->mKey >= k ? nd : nd->mNexts[0];
+    return nd->mNexts[0];
 }
 
 template <typename Key, typename Value>
@@ -339,7 +342,7 @@ SkipListNode<Key, Value> *SkipList<Key, Value>::upper_bound(const Key &k)
     for (int level = this->mMaxLevel; level >= 0;)
     {
         SkipListNode<Key, Value> *next = nd->mNexts[level];
-        if (nd->mKey <= k && next->mKey > k)
+        if (next == mTail || ((nd == mHead || nd->mKey <= k) && next->mKey > k))
         {
             level--;
             continue;
@@ -349,7 +352,7 @@ SkipListNode<Key, Value> *SkipList<Key, Value>::upper_bound(const Key &k)
             nd = next;
         }
     }
-    return nd->mKey > k ? nd : nd->mNexts[0];
+    return nd->mNexts[0];
 }
 
 template <typename Key, typename Value>
@@ -360,7 +363,7 @@ int SkipList<Key, Value>::getRank(const Key &k)
     for (int level = this->mMaxLevel; level >= 0;)
     {
         SkipListNode<Key, Value> *next = nd->mNexts[level];
-        if (nd->mKey <= k && next->mKey > k)
+        if (next == mTail || ((nd == mHead || nd->mKey <= k) && next->mKey > k))
         {
             level--;
         }
@@ -370,7 +373,7 @@ int SkipList<Key, Value>::getRank(const Key &k)
             nd = next;
         }
     }
-    return result;
+    return nd->mKey == k ? result : 0;
 }
 
 }; // namespace Redis
