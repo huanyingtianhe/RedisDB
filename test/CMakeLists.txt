@@ -1,10 +1,11 @@
 include_directories(${PROJECT_SOURCE_DIR}/3rd/googletest-master/googletest/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rd/googletest-master/googlemoc/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rd/spdlog/include)
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
 project(ReistCPlusPlusTest)
-add_executable(ReistCPlusPlusTest skiplist_test.cpp)
-target_link_libraries(ReistCPlusPlusTest gtest gtest_main)
+add_executable(ReistCPlusPlusTest skiplist_test.cpp threadPool_test.cpp)
+target_link_libraries(ReistCPlusPlusTest gtest gtest_main spdlog)
 #special op for msvc
 IF(MSVC)
     message("run here")

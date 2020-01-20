@@ -108,7 +108,7 @@ struct SkipListNode
     }
 };
 
-//SkipList do not allow duplicate key
+//SkipList do allow duplicate key
 template <typename Key, typename Value>
 class SkipList
 {
