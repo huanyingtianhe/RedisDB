@@ -5,7 +5,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 
 project(ReistCPlusPlusTest)
 add_executable(ReistCPlusPlusTest skiplist_test.cpp threadPool_test.cpp)
-target_link_libraries(ReistCPlusPlusTest gtest gtest_main spdlog)
+target_link_libraries(ReistCPlusPlusTest spdlog gtest gtest_main)
 #special op for msvc
 IF(MSVC)
     message("run here")

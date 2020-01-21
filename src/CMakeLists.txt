@@ -6,3 +6,10 @@ add_library(RedisCPlusPlusD SHARED SkipList.cpp)
 
 add_executable(RedisCPlusPlus main.cpp SkipList.cpp)
 
+#special op for msvc
+IF(MSVC)
+    message("run here")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+endif()
+
