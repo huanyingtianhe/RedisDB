@@ -63,5 +63,6 @@
         "xmemory": "cpp",
         "xstddef": "cpp",
         "xtr1common": "cpp"
-    }
+    },
+    "cquery.cacheDirectory": "${workspaceFolder}/.vscode/cquery_cached_index/"
 }

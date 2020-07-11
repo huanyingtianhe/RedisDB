@@ -83,5 +83,6 @@ TEST_F(TestMap, SkipListBoundTest) {
 	auto low = sortedlist.lower_bound(3);
 	auto high = sortedlist.upper_bound(3);
 	EXPECT_EQ(low->mKey, 3);
+	EXPECT_EQ(low->mValue, "llo");
 	EXPECT_EQ(high->mKey, 8);
 }

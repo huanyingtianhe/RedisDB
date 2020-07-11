@@ -3,12 +3,16 @@ Redis implentation using c++.
 
 Feature
 
-1.Base datastructure and memory optmization
+1. data structure consists of stl data structure and new hash, skiplist
 
-2.Change IO model to c++ version netty
+2. Data structure not only in memory, but also flush part of the data to disk when out of memory
 
-3.Cluster(raft master elaction and slot partition)
+3. Change IO model to c++ version netty
 
-4.Provide sql interface.
+4. Provide MVCC ability
 
-5.Provide spark rdd computation model
+5. Cluster(raft master elaction and slot partition)
+
+6. Provide sql interface.
+
+7. Provide spark rdd computation model

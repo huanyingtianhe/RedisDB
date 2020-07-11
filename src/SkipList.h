@@ -203,8 +203,8 @@ bool SkipList<Key, Value>::insert(const Key &k, const Value &v)
     int currLevel = this->mMaxLevel;
     while (currLevel >= 0)
     {
-        //because of the mtail infinate large, we need not to do next pointer null judge
-        if (nd->mNexts[currLevel] == mTail || ((nd == mHead || nd->mKey <= k) && nd->mNexts[currLevel]->mKey > k))
+        //because of the mtail is specified, we need not to do next pointer null judge
+        if (nd->mNexts[currLevel] == mTail || nd->mNexts[currLevel]->mKey > k)
         {
             prevs[currLevel] = nd;
             currLevel--;
@@ -262,7 +262,7 @@ bool SkipList<Key, Value>::erase(const Key &k)
     while (currLevel >= 0)
     {
         //because of the mtail infinate large, we need not to do next pointer null judge
-        if (nd->mNexts[currLevel] == mTail || ((nd == mHead || nd->mKey < k) && nd->mNexts[currLevel]->mKey >= k))
+        if (nd->mNexts[currLevel] == mTail || nd->mNexts[currLevel]->mKey >= k)
         {
             prevs[currLevel] = nd;
             currLevel--;
@@ -320,7 +320,7 @@ SkipListNode<Key, Value> *SkipList<Key, Value>::lower_bound(const Key &k)
     for (int level = this->mMaxLevel; level >= 0;)
     {
         SkipListNode<Key, Value> *next = nd->mNexts[level];
-        if (next == mTail || ((nd == mHead || nd->mKey < k) && next->mKey >= k))
+        if (next == mTail || next->mKey >= k)
         {
             level--;
             continue;
@@ -342,7 +342,7 @@ SkipListNode<Key, Value> *SkipList<Key, Value>::upper_bound(const Key &k)
     for (int level = this->mMaxLevel; level >= 0;)
     {
         SkipListNode<Key, Value> *next = nd->mNexts[level];
-        if (next == mTail || ((nd == mHead || nd->mKey <= k) && next->mKey > k))
+        if (next == mTail || next->mKey > k)
         {
             level--;
             continue;
@@ -363,7 +363,7 @@ int SkipList<Key, Value>::getRank(const Key &k)
     for (int level = this->mMaxLevel; level >= 0;)
     {
         SkipListNode<Key, Value> *next = nd->mNexts[level];
-        if (next == mTail || ((nd == mHead || nd->mKey <= k) && next->mKey > k))
+        if (next == mTail || next->mKey > k)
         {
             level--;
         }
