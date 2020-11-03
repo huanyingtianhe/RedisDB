@@ -1,4 +1,4 @@
-# RedisCplusPlus
+# RedisDB
 Redis implentation using c++.
 
 Feature
