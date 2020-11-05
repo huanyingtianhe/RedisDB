@@ -24,7 +24,7 @@ public:
 };
 
 TEST_F(TestMap, SkipListInsertTest) {
-	Redis::SkipList<int, std::string> sortedlist;
+	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	std::vector<int> keys{1, 3, 8};
 	sortedlist.insert(1, "he");
 	sortedlist.insert(8, "world");
@@ -37,7 +37,7 @@ TEST_F(TestMap, SkipListInsertTest) {
 }
 
 TEST_F(TestMap, SkipListEraseTest) {
-	Redis::SkipList<int, std::string> sortedlist;
+	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	std::vector<int> keys{1, 8};
 	sortedlist.insert(1, "he");
 	sortedlist.insert(8, "world");
@@ -51,7 +51,7 @@ TEST_F(TestMap, SkipListEraseTest) {
 }
 
 TEST_F(TestMap, SkipListReverseTest) {
-	Redis::SkipList<int, std::string> sortedlist;
+	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	std::vector<int> keys{8, 3, 1};
 	sortedlist.insert(1, "he");
 	sortedlist.insert(8, "world");
@@ -63,7 +63,7 @@ TEST_F(TestMap, SkipListReverseTest) {
 }
 
 TEST_F(TestMap, SkipListRankTest) {
-	Redis::SkipList<int, std::string> sortedlist;
+	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	sortedlist.insert(1, "he");
 	sortedlist.insert(8, "world");
 	sortedlist.insert(3, "llo");
@@ -72,7 +72,7 @@ TEST_F(TestMap, SkipListRankTest) {
 }
 
 TEST_F(TestMap, SkipListBoundTest) {
-	Redis::SkipList<int, std::string> sortedlist;
+	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	std::vector<int> keys{1, 3, 8};
 	sortedlist.insert(1, "he");
 	sortedlist.insert(8, "world");

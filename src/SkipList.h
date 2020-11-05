@@ -6,7 +6,7 @@
 #include <iterator>
 #include <cstdlib>
 
-namespace Redis
+namespace RedisDataStructure
 {
 
 template <typename T>

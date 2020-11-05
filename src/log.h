@@ -25,9 +25,9 @@ class Logger {
     std::shared_ptr<spdlog::logger> logger;
     int logtype;
 public:
-    void Logger(){}
+    Logger(){}
     //1. std logger
-    //2. fiel logger
+    //2. file logger
     void init(int type, const std::string& path = ""){
         logtype = type;
         if(type == 1){
