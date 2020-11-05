@@ -3,16 +3,12 @@ Redis implentation using c++.
 
 Feature
 
-1. data structure consists of stl data structure and new hash, skiplist
+1. Base data structure: skiplist, hash table, ziplist, quicklist, intset, Rax
 
-2. Data structure not only in memory, but also flush part of the data to disk when out of memory
+2. Change IO model to c++ version netty or actor model
 
-3. Change IO model to c++ version netty
+3. Provide multithread ability: lock manager or mvcc
 
-4. Provide MVCC ability
+4. Cluster feature(raft master elaction, consistence hash)
 
-5. Cluster(raft master elaction and slot partition)
-
-6. Provide sql interface.
-
-7. Provide spark rdd computation model
+6. Provide sql interface to access data
