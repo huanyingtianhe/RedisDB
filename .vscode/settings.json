@@ -64,5 +64,9 @@
         "xstddef": "cpp",
         "xtr1common": "cpp"
     },
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "D:/Code/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    },
     "cquery.cacheDirectory": "${workspaceFolder}/.vscode/cquery_cached_index/"
+    
 }

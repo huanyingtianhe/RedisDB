@@ -1,11 +1,12 @@
-include_directories(${PROJECT_SOURCE_DIR}/3rd/googletest-master/googletest/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rd/googletest-master/googlemoc/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rd/spdlog/include)
+cmake_minimum_required(VERSION 3.0.0)
+
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
-project(ReistCPlusPlusTest)
-add_executable(ReistCPlusPlusTest skiplist_test.cpp threadPool_test.cpp)
-target_link_libraries(ReistCPlusPlusTest spdlog gtest gtest_main)
+find_package(GTest CONFIG REQUIRED)
+
+add_executable(RedisDBTest skiplist_test.cpp threadPool_test.cpp)
+target_link_libraries(RedisDBTest PRIVATE GTest::gmock GTest::gtest GTest::gmock_main GTest::gtest_main)
+
 #special op for msvc
 IF(MSVC)
     message("run here")

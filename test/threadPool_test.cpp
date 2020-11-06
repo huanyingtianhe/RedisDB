@@ -3,9 +3,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
-#include <spdlog/spdlog.h>
-#include <spdlog/async.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+
 
 class TestThreadPool :public testing::Test
 {
@@ -30,11 +28,9 @@ public:
 
 TEST_F(TestThreadPool, ConcurrentQueueTest) {
 	Redis::ConcurrentQueueWithLock<int> q(5);
-	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	spdlog::logger logger("test", console_sink);
 	std::thread producer([&]() {
 		for (int i = 0; i < 10; i++){
-			logger.info("start push data to queue {}\n", i);
+			std::cout<< "start push data to queue " << i <<std::endl;
 			q.waitPush(i);
 		}
 	});
@@ -42,7 +38,7 @@ TEST_F(TestThreadPool, ConcurrentQueueTest) {
 	std::thread consumer([&]() {
 		for(int i = 0; i < 10; i++){
 			auto t = q.waitPop();
-			logger.info("front: {}, size: {}\n",*t, q.getSize());
+			std::cout << "front: " << *t << ", size: " << q.getSize() << std::endl;
 		}
 	});
 	producer.join();
