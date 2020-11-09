@@ -53,3 +53,10 @@ TEST_F(TestThreadPool, ConcurrentQueueTest) {
 // 	std::lock_guard<std::mutex> l2(m);
 // 	std::cout<<"gard"<<std::endl;
 // }
+
+int main(int argc, char **argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+
+    return RUN_ALL_TESTS();
+}

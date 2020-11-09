@@ -106,6 +106,16 @@ struct SkipListNode
         mNexts.resize(l, nullptr);
         mSpans.resize(l, 0);
     }
+    void printNode(){
+        std::cout << "key: " << mKey << ", value: " <<mValue <<std::endl;
+        std::cout<<"----------------------------"<<std::endl;
+
+        for(int i = mNexts.size() - 1; i >= 0; i--){
+            std::cout<<"| span: "<< mSpans[i] << " | next: " << mNexts[i] <<" |"<<std::endl;
+        }
+        std::cout<<"----------------------------"<<std::endl;
+
+    }
 };
 
 //SkipList do allow duplicate key
@@ -142,6 +152,7 @@ public:
     reverse_iterator rend() { return reverse_iterator(mHead); }
     const_reverse_iterator crbegin() { return const_reverse_iterator(mTail->mBackword); }
     const_reverse_iterator crend() { return const_reverse_iterator(mHead); }
+    void printList();
 
 private:
     //generate random level
@@ -208,6 +219,7 @@ bool SkipList<Key, Value>::insert(const Key &k, const Value &v)
         {
             prevs[currLevel] = nd;
             currLevel--;
+            if(currLevel >= 0) ranks[currLevel] = ranks[currLevel + 1];
         }
         else
         {
@@ -374,6 +386,14 @@ int SkipList<Key, Value>::getRank(const Key &k)
         }
     }
     return nd->mKey == k ? result : 0;
+}
+
+template <typename Key, typename Value>
+void SkipList<Key, Value>::printList(){
+    this->mHead->printNode();
+    for(auto it = this->begin(); it != this->end(); it++){
+		it->printNode();
+	}
 }
 
 }; // namespace Redis

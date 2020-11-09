@@ -65,10 +65,15 @@ TEST_F(TestMap, SkipListReverseTest) {
 TEST_F(TestMap, SkipListRankTest) {
 	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	sortedlist.insert(1, "he");
+	sortedlist.printList();
 	sortedlist.insert(8, "world");
+	sortedlist.printList();
 	sortedlist.insert(3, "llo");
+	EXPECT_EQ(sortedlist.getRank(1), 1);
+	EXPECT_EQ(sortedlist.getRank(3), 2);
 	EXPECT_EQ(sortedlist.getRank(8), 3);
 	EXPECT_EQ(sortedlist.getRank(2), 0);
+	sortedlist.printList();
 }
 
 TEST_F(TestMap, SkipListBoundTest) {
@@ -85,4 +90,11 @@ TEST_F(TestMap, SkipListBoundTest) {
 	EXPECT_EQ(low->mKey, 3);
 	EXPECT_EQ(low->mValue, "llo");
 	EXPECT_EQ(high->mKey, 8);
+}
+
+int main(int argc, char **argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+
+    return RUN_ALL_TESTS();
 }

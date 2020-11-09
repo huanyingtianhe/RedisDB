@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.10.0)
 
 project(RedisDB)
 
@@ -13,5 +13,5 @@ target_link_libraries(RedisDB PRIVATE spdlog::spdlog spdlog::spdlog_header_only)
 IF(MSVC)
     message("run here")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
 endif()
