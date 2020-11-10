@@ -2,7 +2,7 @@
 #include <SkipList.h>
 #include <string>
 #include <iostream>
-class TestMap :public testing::Test
+class TestMap : public testing::Test
 {
 public:
 	static void SetUpTestCase()
@@ -13,7 +13,7 @@ public:
 	{
 		std::cout << "TearDownTestCase" << std::endl;
 	}
-	virtual void SetUp()   //TEST跑之前会执行SetUp
+	virtual void SetUp() //TEST跑之前会执行SetUp
 	{
 		std::cout << "SetUp" << std::endl;
 	}
@@ -23,20 +23,23 @@ public:
 	}
 };
 
-TEST_F(TestMap, SkipListInsertTest) {
+TEST_F(TestMap, SkipListInsertTest)
+{
 	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	std::vector<int> keys{1, 3, 8};
 	sortedlist.insert(1, "he");
 	sortedlist.insert(8, "world");
 	sortedlist.insert(3, "llo");
 	int keyIndex = 0;
-	for(auto it = sortedlist.begin(); it != sortedlist.end(); it++){
-		std::cout<< it->mKey <<" "<< it->mValue<< std::endl;
+	for (auto it = sortedlist.begin(); it != sortedlist.end(); it++)
+	{
+		std::cout << it->mKey << " " << it->mValue << std::endl;
 		EXPECT_EQ(it->mKey, keys[keyIndex++]);
 	}
 }
 
-TEST_F(TestMap, SkipListEraseTest) {
+TEST_F(TestMap, SkipListEraseTest)
+{
 	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	std::vector<int> keys{1, 8};
 	sortedlist.insert(1, "he");
@@ -45,24 +48,28 @@ TEST_F(TestMap, SkipListEraseTest) {
 	int keyIndex = 0;
 	sortedlist.erase(3);
 	EXPECT_EQ(sortedlist.getLength(), 2);
-	for(auto it = sortedlist.begin(); it != sortedlist.end(); it++){
+	for (auto it = sortedlist.begin(); it != sortedlist.end(); it++)
+	{
 		EXPECT_EQ(it->mKey, keys[keyIndex++]);
 	}
 }
 
-TEST_F(TestMap, SkipListReverseTest) {
+TEST_F(TestMap, SkipListReverseTest)
+{
 	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	std::vector<int> keys{8, 3, 1};
 	sortedlist.insert(1, "he");
 	sortedlist.insert(8, "world");
 	sortedlist.insert(3, "llo");
 	int keyIndex = 0;
-	for(auto it = sortedlist.rbegin(); it != sortedlist.rend(); it++){
+	for (auto it = sortedlist.rbegin(); it != sortedlist.rend(); it++)
+	{
 		EXPECT_EQ(it->mKey, keys[keyIndex++]);
 	}
 }
 
-TEST_F(TestMap, SkipListRankTest) {
+TEST_F(TestMap, SkipListRankTest)
+{
 	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	sortedlist.insert(1, "he");
 	sortedlist.printList();
@@ -76,7 +83,8 @@ TEST_F(TestMap, SkipListRankTest) {
 	sortedlist.printList();
 }
 
-TEST_F(TestMap, SkipListBoundTest) {
+TEST_F(TestMap, SkipListBoundTest)
+{
 	RedisDataStructure::SkipList<int, std::string> sortedlist;
 	std::vector<int> keys{1, 3, 8};
 	sortedlist.insert(1, "he");
@@ -94,7 +102,7 @@ TEST_F(TestMap, SkipListBoundTest) {
 
 int main(int argc, char **argv)
 {
-    ::testing::InitGoogleTest(&argc, argv);
+	::testing::InitGoogleTest(&argc, argv);
 
-    return RUN_ALL_TESTS();
+	return RUN_ALL_TESTS();
 }

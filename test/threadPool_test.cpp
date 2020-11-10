@@ -4,8 +4,7 @@
 #include <string>
 #include <thread>
 
-
-class TestThreadPool :public testing::Test
+class TestThreadPool : public testing::Test
 {
 public:
 	static void SetUpTestCase()
@@ -26,17 +25,20 @@ public:
 	}
 };
 
-TEST_F(TestThreadPool, ConcurrentQueueTest) {
+TEST_F(TestThreadPool, ConcurrentQueueTest)
+{
 	Redis::ConcurrentQueueWithLock<int> q(5);
 	std::thread producer([&]() {
-		for (int i = 0; i < 10; i++){
-			std::cout<< "start push data to queue " << i <<std::endl;
+		for (int i = 0; i < 10; i++)
+		{
+			std::cout << "start push data to queue " << i << std::endl;
 			q.waitPush(i);
 		}
 	});
 
 	std::thread consumer([&]() {
-		for(int i = 0; i < 10; i++){
+		for (int i = 0; i < 10; i++)
+		{
 			auto t = q.waitPop();
 			std::cout << "front: " << *t << ", size: " << q.getSize() << std::endl;
 		}
@@ -44,8 +46,6 @@ TEST_F(TestThreadPool, ConcurrentQueueTest) {
 	producer.join();
 	consumer.join();
 }
-
-
 
 // TEST_F(TestThreadPool, LockTest) {
 // 	std::mutex m;
@@ -56,7 +56,7 @@ TEST_F(TestThreadPool, ConcurrentQueueTest) {
 
 int main(int argc, char **argv)
 {
-    ::testing::InitGoogleTest(&argc, argv);
+	::testing::InitGoogleTest(&argc, argv);
 
-    return RUN_ALL_TESTS();
+	return RUN_ALL_TESTS();
 }
