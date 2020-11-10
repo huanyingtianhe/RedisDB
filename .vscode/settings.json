@@ -65,8 +65,14 @@
         "xtr1common": "cpp"
     },
     "cmake.configureSettings": {
-        "CMAKE_TOOLCHAIN_FILE": "D:/Code/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "D:/Code/vcpkg/scripts/buildsystems/vcpkg.cmake",
     },
+    "cmake.configureArgs":[
+        "-DWITH_TEST=ON"
+    ],
+    "cmake.buildArgs": [
+                
+    ],
     "cquery.cacheDirectory": "${workspaceFolder}/.vscode/cquery_cached_index/"
     
 }

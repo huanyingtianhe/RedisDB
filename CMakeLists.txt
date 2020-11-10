@@ -7,9 +7,12 @@ set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
-enable_testing ()
-add_subdirectory(${PROJECT_SOURCE_DIR}/test)
 
+option(WITH_TEST, "ENABLE TEST")
+if(WITH_TEST)
+    enable_testing ()
+    add_subdirectory(${PROJECT_SOURCE_DIR}/test)
+endif()
 
 #special op for msvc
 IF(MSVC)
