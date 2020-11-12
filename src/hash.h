@@ -30,6 +30,14 @@ namespace RedisDataStructure
         }
 
         ~HashTable(){
+            for(int i = 0; i < mBucketsNumber; i++){
+                auto head = mNodes[i];
+                while(head){
+                    auto next = head->mNext;
+                    delete head;
+                    head = next;
+                }
+            }
             delete []mNodes;
         }
 
