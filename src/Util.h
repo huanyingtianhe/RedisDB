@@ -1,5 +1,5 @@
-#ifndef LOG_H
-#define LOG_H
+#ifndef UTIL_H
+#define UTIL_H
 
 #include <string>
 #include <spdlog/spdlog.h>
@@ -76,6 +76,16 @@ namespace Util
         std::shared_ptr<spdlog::logger> logger;
         int logtype;
     };
-} // namespace Util
+
+    class noncopyable
+    {
+    protected:
+        noncopyable() = default;
+        ~noncopyable() = default;
+
+        noncopyable(noncopyable const &) = delete;
+        noncopyable &operator=(noncopyable const &) = delete;
+    };
+}; // namespace Util
 
 #endif
