@@ -5,85 +5,10 @@
 #include <limits>
 #include <iterator>
 #include <cstdlib>
+#include "redisIterator.h"
 
 namespace RedisDataStructure
 {
-
-    template <typename T>
-    class RedisIterator : public std::iterator<std::bidirectional_iterator_tag, T, ptrdiff_t, T *, T &>
-    {
-    public:
-        RedisIterator(T *ptr) : m_ptr(ptr) {}
-        RedisIterator(const RedisIterator<T> &other) { m_ptr = other.m_ptr; };
-        RedisIterator<T> &operator=(const RedisIterator<T> &other) { m_ptr = other.m_ptr; };
-        //RedisIterator(RedisIterator<T> &&other) = delete;
-        //RedisIterator<T> &operator = (RedisIterator<T> &&other) = delete;
-        ~RedisIterator() {}
-
-        T &operator*() { return *m_ptr; }
-        const T &operator*() const { return *m_ptr; }
-        T *operator->() { return m_ptr; }
-        T *getPtr() const { return m_ptr; }
-        const T *getConstPtr() const { return m_ptr; }
-
-        RedisIterator<T> &operator++()
-        {
-            m_ptr = m_ptr->mNexts[0];
-            return (*this);
-        }
-        RedisIterator<T> &operator--()
-        {
-            m_ptr = m_ptr->mBackword;
-            return (*this);
-        }
-        RedisIterator<T> operator++(int)
-        {
-            auto temp(*this);
-            m_ptr = m_ptr->mNexts[0];
-            return temp;
-        }
-        RedisIterator<T> operator--(int)
-        {
-            auto temp(*this);
-            m_ptr = m_ptr->mBackword;
-            return temp;
-        }
-        bool operator==(const RedisIterator<T> &rawIterator) const { return (m_ptr == rawIterator.getConstPtr()); }
-        bool operator!=(const RedisIterator<T> &rawIterator) const { return (m_ptr != rawIterator.getConstPtr()); }
-
-    protected:
-        T *m_ptr;
-    };
-
-    template <typename T>
-    class RedisReverseIterator : public RedisIterator<T>
-    {
-    public:
-        RedisReverseIterator<T>(T *ptr) : RedisIterator(ptr) {}
-        RedisReverseIterator<T> &operator++()
-        {
-            m_ptr = m_ptr->mBackword;
-            return (*this);
-        }
-        RedisReverseIterator<T> &operator--()
-        {
-            m_ptr = m_ptr->mNexts[0];
-            return (*this);
-        }
-        RedisReverseIterator<T> operator++(int)
-        {
-            auto temp(*this);
-            m_ptr = m_ptr->mBackword;
-            return temp;
-        }
-        RedisReverseIterator<T> operator--(int)
-        {
-            auto temp(*this);
-            m_ptr = m_ptr->mNexts[0];
-            return temp;
-        }
-    };
-
     const int ZSKIPLIST_MAXLEVEL = 64; /* Should be enough for 2^64 elements */
     const double ZSKIPLIST_P = 0.25;   /* Skiplist P = 1/4 */
     const double EP = 1e-6;
@@ -106,6 +31,15 @@ namespace RedisDataStructure
             mNexts.resize(l, nullptr);
             mSpans.resize(l, 0);
         }
+
+        SkipListNode<Key, Value>* next(){
+            return this->mNexts[0];
+        }
+
+        SkipListNode<Key, Value>* prev(){
+            return this->mBackword;
+        }
+
         void printNode()
         {
             std::cout << "key: " << mKey << ", value: " << mValue << std::endl;
@@ -124,10 +58,10 @@ namespace RedisDataStructure
     class SkipList
     {
     public:
-        using iterator = RedisIterator<SkipListNode<Key, Value>>;
-        using const_iterator = RedisIterator<const SkipListNode<Key, Value>>;
-        using reverse_iterator = RedisReverseIterator<SkipListNode<Key, Value>>;
-        using const_reverse_iterator = RedisReverseIterator<const SkipListNode<Key, Value>>;
+        using iterator = RedisBidirectionalIterator<SkipListNode<Key, Value>>;
+        using const_iterator = RedisBidirectionalIterator<const SkipListNode<Key, Value>>;
+        using reverse_iterator = RedisBidirectionalReverseIterator<SkipListNode<Key, Value>>;
+        using const_reverse_iterator = RedisBidirectionalReverseIterator<const SkipListNode<Key, Value>>;
         SkipList();
         ~SkipList() noexcept;
         SkipList(const SkipList<Key, Value> &skiplist) = delete;

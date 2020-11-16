@@ -33,7 +33,7 @@ TEST_F(TestHash, HashHasherTest)
 
 TEST_F(TestHash, HashInsertTest)
 {
-    RedisDataStructure::Hash<std::string, int> hash;
+    RedisDataStructure::HashMap<std::string, int> hash;
     hash.insert("hello", 1);
     hash.insert("world", 2);
 	hash.insert("zi", 3);
@@ -50,7 +50,7 @@ TEST_F(TestHash, HashInsertTest)
 
 TEST_F(TestHash, HashEraseTest)
 {
-    RedisDataStructure::Hash<std::string, int> hash;
+    RedisDataStructure::HashMap<std::string, int> hash;
     hash.insert("hello", 1);
     hash.insert("world", 2);
 	hash.insert("zi", 3);
@@ -65,7 +65,7 @@ TEST_F(TestHash, HashEraseTest)
 
 TEST_F(TestHash, HashRehashTest)
 {
-    RedisDataStructure::Hash<std::string, int> hash;
+    RedisDataStructure::HashMap<std::string, int> hash;
     hash.insert("hello", 1);
     hash.insert("world", 2);
 	hash.insert("zi", 3);

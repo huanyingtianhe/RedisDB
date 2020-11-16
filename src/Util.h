@@ -86,6 +86,13 @@ namespace Util
         noncopyable(noncopyable const &) = delete;
         noncopyable &operator=(noncopyable const &) = delete;
     };
+
+    //type traits
+    template <class T>
+    struct isPair :  std::false_type {};
+
+    template <class T1, class T2>
+    struct isPair<std::pair<T1, T2>> : std::true_type {};
 }; // namespace Util
 
 #endif

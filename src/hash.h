@@ -9,22 +9,90 @@
 
 namespace RedisDataStructure
 {
-    template <typename K, typename V>
-    struct HashNode: public Util::noncopyable
+    template <class T, bool>
+    struct HtValueTraitsImp
     {
-        K mKey;
-        V mValue;
-        HashNode *mNext;
-        HashNode(const K &k, const V &v) : mKey(k), mValue(v), mNext(nullptr) {}
-        HashNode(const K &k, const V &v, HashNode *n) : mKey(k), mValue(v), mNext(n) {}
+        using KeyType = T ;
+        using MappedType = T ;
+        using ValueType = T ;
+
+        template <class Ty>
+        static const KeyType &getKey(const Ty &value)
+        {
+            return value;
+        }
+
+        template <class Ty>
+        static const ValueType &getValue(const Ty &value)
+        {
+            return value;
+        }
     };
 
-    template <typename K, typename V>
+    //hash map's node is std::pair, this partial template specialization is for the hashMap node structure
+    template <class T>
+    struct HtValueTraitsImp<T, true>
+    {
+        using KeyType = typename std::remove_cv<typename T::first_type>::type;
+        using MappedType = typename T::second_type;
+        using ValueType = typename T::second_type;
+
+        template <class Ty>
+        static const KeyType &getKey(const Ty &value)
+        {
+            return value.first;
+        }
+
+        template <class Ty>
+        static const ValueType &getValue(const Ty &value)
+        {
+            return value.second;
+        }
+    };
+
+    template <class T>
+    struct HtValueTraits
+    {
+        static constexpr bool isMap = Util::isPair<T>::value;
+        using valueTraitsType = HtValueTraitsImp<T, isMap>;
+
+        using KeyType =  typename valueTraitsType::KeyType ;
+        using MappedType = typename valueTraitsType::MappedType;
+        using ValueType = typename valueTraitsType::ValueType;
+
+        template <class Ty>
+        static const KeyType &getKey(const Ty &value)
+        {
+            return valueTraitsType::getKey(value);
+        }
+
+        template <class Ty>
+        static const ValueType &getValue(const Ty &value)
+        {
+            return valueTraitsType::getValue(value);
+        }
+    };
+
+    template <typename T>
+    struct HashNode : public Util::noncopyable
+    {
+        T mValue;
+        HashNode *mNext;
+        HashNode(const T& v) : mValue(v), mNext(nullptr) {}
+        HashNode(const T& v, HashNode *n) : mValue(v), mNext(n) {}
+    };
+
+    template <typename T>
     struct HashTable: public Util::noncopyable
     {
+    public:
+        using ValueTraits = HtValueTraits<T>;
+        using KeyType = typename ValueTraits::KeyType;
+        using ValueType = typename ValueTraits::ValueType;
+
         HashTable(size_t buck) : mSize(0), mBucketsNumber(buck)
         {
-            mNodes = new HashNode<K, V> *[buck];
+            mNodes = new HashNode<T> *[buck];
             //fill(mNodes[0], mNodes[0] + buck, nullptr);
             for(int i = 0; i < buck; i++) mNodes[i] = nullptr;
         }
@@ -41,14 +109,14 @@ namespace RedisDataStructure
             delete []mNodes;
         }
 
-        HashNode<K, V>* getBucketHead(size_t index){
+        HashNode<T>* getBucketHead(size_t index){
             return mNodes[index];
         }
 
-        HashNode<K, V>* get(size_t index, const K& key){
+        HashNode<T>* get(size_t index, const KeyType& key){
             auto head = mNodes[index];
             while(head){
-                if(head->mKey == key){
+                if(ValueTraits::getKey(head->mValue) == key){
                     return head;
                 }
                 head = head->mNext;
@@ -60,7 +128,7 @@ namespace RedisDataStructure
             mNodes[index] = nullptr;
         }
 
-        bool insertNode(size_t index, HashNode<K, V> *node)
+        bool insertNode(size_t index, HashNode<T> *node)
         {
             if (index < mBucketsNumber)
             {
@@ -80,17 +148,17 @@ namespace RedisDataStructure
             }
         }
 
-        bool eraseNode(size_t index, const K& key){
+        bool eraseNode(size_t index, const KeyType& key){
             auto head = mNodes[index];
             if(!head) return false;
-            if(head->mKey == key){
+            if(ValueTraits::getKey(head->mValue) == key){
                 mNodes[index] = mNodes[index]->mNext;
                 delete head;
                 mSize--;
                 return true;
             }else{
                 while(head->mNext){
-                    if(head->mNext->mKey == key){
+                    if(ValueTraits::getKey(head->mNext->mValue) == key){
                         auto tmp = head->mNext;
                         head->mNext = head->mNext->mNext;
                         delete tmp;
@@ -111,7 +179,7 @@ namespace RedisDataStructure
                     std::cout<<"nullptr"<<std::endl;
                 }else{
                     while(head){
-                        std::cout<< head->mKey<<","<< head->mValue<<"; ";
+                        std::cout<< ValueTraits::getKey(head->mValue)<<","<< ValueTraits::getValue(head->mValue)<<"; ";
                         head = head->mNext;
                     }
                     std::cout<<std::endl;
@@ -119,7 +187,7 @@ namespace RedisDataStructure
                 
             }
         }
-        HashNode<K, V> **mNodes;
+        HashNode<T> **mNodes;
         size_t mSize;
         size_t mBucketsNumber;
     };
@@ -159,29 +227,36 @@ namespace RedisDataStructure
     };
 
     //remove copy constructor and copy assignment support
-    template <typename K, typename V, typename Hasher = HashFunction<K>>
+    template <typename T, typename Hasher>
     class Hash: public Util::noncopyable
     {
     public:
-        Hash() : mBucketsNumber(4), mBucketsMask(3), mRehashIndex(-1), mLoadFactor(1.0f), mShrinkFactor(0.1f) {
-            mActive = new HashTable<K, V>(mBucketsNumber);
+        using ValueTraits =  HtValueTraits<T>;
+        using KeyType = typename ValueTraits::KeyType;
+        using ValueType = typename ValueTraits::ValueType;
+    public:
+        Hash() : mBucketsNumber(4), mBucketsMask(3), mRehashIndex(-1), 
+                 mLoadFactor(1.0f), mShrinkFactor(0.1f) {
+            mActive = new HashTable<T>(mBucketsNumber);
             mBackup = nullptr;
+            mHasher = Hasher();
         }
         ~Hash(){
             if(mActive) delete mActive;
             if(mBackup) delete mBackup;
         }
         //add move constructor and move assignment support
-        Hash(const Hash<K, V, Hasher>&& h): mActive(h.mActive), mBackup(h.mBackup),{
+        Hash(const Hash<T, Hasher>&& h): mActive(h.mActive), mBackup(h.mBackup),{
             mBucketsNumber = h.mBucketsNumber;
             mBucketsMask = h.mBucketsMask;
             mRehashIndex = h.mRehashIndex;
             mLoadFactor = h.mLoadFactor;
             mShrinkFactor = h.mShrinkFactor;
+            mHasher = h.mHasher;
             h.mActive = nullptr;
             h.mBackup = nullptr;
         }
-        Hash<K, V, Hasher>& operator=(const Hash<K, V, Hasher>&& h){
+        Hash<T, Hasher>& operator=(const Hash<T, Hasher>&& h){
             mActive = h.mActive;
             mBackup = h.mBackup;
             mBucketsNumber = h.mBucketsNumber;
@@ -189,10 +264,11 @@ namespace RedisDataStructure
             mRehashIndex = h.mRehashIndex;
             mLoadFactor = h.mLoadFactor;
             mShrinkFactor = h.mShrinkFactor;
+            mHasher = h.mHasher;
             h.mActive = nullptr;
             h.mBackup = nullptr;
         }
-    private:
+    protected:
         bool isReHashing()
         {
             return mRehashIndex != -1;
@@ -203,7 +279,7 @@ namespace RedisDataStructure
         }
 
         bool isNeedShrink(){
-            return mActive->mSize > MIN_BUCKETS_SIZE && mActive->mSize > mActive->mBucketsNumber * mShrinkFactor;
+            return mActive->mSize > MIN_BUCKETS_SIZE && mActive->mSize < mActive->mBucketsNumber * mShrinkFactor;
         }
 
         void startReHashing()
@@ -226,11 +302,10 @@ namespace RedisDataStructure
         }
 
         void rehash(int step = 2, bool isExpand = true){
-            Hasher hasher;
             //if first time rehash, new backup hashtable
             if(mRehashIndex == -1){
                 mBucketsNumber = getNextPower2(mActive->mSize);
-                mBackup = new HashTable<K, V>(mBucketsNumber);
+                mBackup = new HashTable<T>(mBucketsNumber);
                 startReHashing();
                 mBucketsMask = mBucketsNumber - 1;
             }
@@ -240,7 +315,7 @@ namespace RedisDataStructure
                     auto head = mActive->getBucketHead(mRehashIndex);
                     while(head){
                         auto next = head->mNext;
-                        mBackup->insertNode(hasher(head->mKey) & mBucketsMask, head);
+                        mBackup->insertNode(mHasher(ValueTraits::getKey(head->mValue)) & mBucketsMask, head);
                         head = next;
                     }
                     mActive->resetBucket(mRehashIndex);
@@ -257,32 +332,15 @@ namespace RedisDataStructure
         }
         
     public:
-        void insert(const K &key, const V &v)
-        {
-            Hasher hasher;
-            size_t index = hasher(key) & mBucketsMask;
-            if(isReHashing() || isNeedReHash()){
-                rehash();
-            }
-            std::cout<<"hash index:" <<index<<std::endl;
-            HashNode<K, V>* tmp = new HashNode<K, V>(key, v);
-            if(isReHashing()){
-                mBackup->insertNode(index, tmp);
-            }else{
-                mActive->insertNode(index, tmp);
-            }
-        }
-
-        bool erase(const K& key){
-            Hasher hasher;
-            size_t index = hasher(key) & mBucketsMask;
+        bool erase(const KeyType& key){
+            size_t index = mHasher(key) & mBucketsMask;
             if(isReHashing() || isNeedReHash()){
                 rehash();
             }
             bool status = true;
             if(isReHashing()){
                 if(!mBackup->eraseNode(index, key)){
-                    status = mActive->eraseNode(hasher(key) & (mActive->mBucketsNumber - 1), key);
+                    status = mActive->eraseNode(mHasher(key) & (mActive->mBucketsNumber - 1), key);
                 }
             }else{
                 status = mActive->eraseNode(index, key);
@@ -293,27 +351,6 @@ namespace RedisDataStructure
             return status;
         }
 
-        V& get(const K& key){
-            Hasher hasher;
-            size_t index = hasher(key) & mBucketsMask;
-            if(isReHashing() || isNeedReHash()){
-                rehash();
-            }
-            HashNode<K, V>* node = nullptr;
-            if(isReHashing()){
-                node = mBackup->get(index, key);
-                if(!node){
-                    node = mActive->get(hasher(key) & (mActive->mBucketsNumber - 1), key);
-                }
-            }else{
-                node = mActive->get(index, key);
-            }
-            if(node) {
-                return node->mValue;
-            }else{
-                throw std::out_of_range("key not exist in hash");
-            }
-        }
         void printHash(){
             std::cout<<"------------hash------------"<<std::endl;
             if(mActive){
@@ -332,16 +369,84 @@ namespace RedisDataStructure
             std::cout<<"------------end-------------"<<std::endl;
 
         }
-    private:
-        HashTable<K, V>* mActive;
-        HashTable<K, V>* mBackup;
+    protected:
+        HashTable<T>* mActive;
+        HashTable<T>* mBackup;
         int mBucketsNumber;
         int mBucketsMask;
         int mRehashIndex;
         float mLoadFactor;
         float mShrinkFactor;
+        Hasher mHasher;
         const int MIN_BUCKETS_SIZE = 4;
     };
+
+    template<typename K, typename V, typename Hasher = HashFunction<K>>
+    class HashMap: public Hash<std::pair<K, V>, Hasher> {
+    public:
+        using KeyType = K;
+        using ValueType = V;
+        using EncyType = std::pair<KeyType, ValueType>;
+    public:
+        void insert(const KeyType &key, const ValueType &v)
+        {
+            size_t index = mHasher(key) & mBucketsMask;
+            if(isReHashing() || isNeedReHash()){
+                rehash();
+            }
+            //std::cout<<"hash index:" <<index<<std::endl;
+            HashNode<EncyType>* tmp = new HashNode<EncyType>(std::make_pair(key, v));
+            if(isReHashing()){
+                mBackup->insertNode(index, tmp);
+            }else{
+                mActive->insertNode(index, tmp);
+            }
+        }
+
+        ValueType& get(const KeyType& key){
+            size_t index = mHasher(key) & mBucketsMask;
+            if(isReHashing() || isNeedReHash()){
+                rehash();
+            }
+            HashNode<EncyType>* node = nullptr;
+            if(isReHashing()){
+                node = mBackup->get(index, key);
+                if(!node){
+                    node = mActive->get(mHasher(key) & (mActive->mBucketsNumber - 1), key);
+                }
+            }else{
+                node = mActive->get(index, key);
+            }
+            if(node) {
+                return node->mValue.second;
+            }else{
+                throw std::out_of_range("key not exist in hash");
+            }
+        }
+    };
+
+    template<typename K, typename Hasher = HashFunction<K>>
+    class HashSet: public Hash<K, Hasher> {
+    public:
+        using KeyType = K;
+    public:
+        void insert(const KeyType &key)
+        {
+            size_t index = mHasher(key) & mBucketsMask;
+            if(isReHashing() || isNeedReHash()){
+                rehash();
+            }
+            //std::cout<<"hash index:" <<index<<std::endl;
+            HashNode<KeyType>* tmp = new HashNode<KeyType>(key);
+            if(isReHashing()){
+                mBackup->insertNode(index, tmp);
+            }else{
+                mActive->insertNode(index, tmp);
+            }
+        }
+    };
+
+
 }; // namespace RedisDataStructure
 
 #endif
