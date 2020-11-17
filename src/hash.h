@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <string>
 #include "Util.h"
+#include "redisIterator.h"
 #include <stdexcept>
 #include <algorithm>
 
@@ -13,7 +14,6 @@ namespace RedisDataStructure
     struct HtValueTraitsImp
     {
         using KeyType = T ;
-        using MappedType = T ;
         using ValueType = T ;
 
         template <class Ty>
@@ -29,12 +29,11 @@ namespace RedisDataStructure
         }
     };
 
-    //hash map's node is std::pair, this partial template specialization is for the hashMap node structure
+    //hash map's node is std::pair, this partial template specialization is for the hashMap node only
     template <class T>
     struct HtValueTraitsImp<T, true>
     {
         using KeyType = typename std::remove_cv<typename T::first_type>::type;
-        using MappedType = typename T::second_type;
         using ValueType = typename T::second_type;
 
         template <class Ty>
@@ -57,7 +56,6 @@ namespace RedisDataStructure
         using valueTraitsType = HtValueTraitsImp<T, isMap>;
 
         using KeyType =  typename valueTraitsType::KeyType ;
-        using MappedType = typename valueTraitsType::MappedType;
         using ValueType = typename valueTraitsType::ValueType;
 
         template <class Ty>
@@ -130,25 +128,37 @@ namespace RedisDataStructure
 
         bool insertNode(size_t index, HashNode<T> *node)
         {
-            if (index < mBucketsNumber)
-            {
-                if(!mNodes[index]){
-                    mNodes[index] = node;
-                    node->mNext = nullptr;
-                }else{
-                    node->mNext = mNodes[index];
-                    mNodes[index] = node;
-                }
-                mSize++;
+            if(index >= mBucketsNumber) return false;
+            if(!mNodes[index]){
+                mNodes[index] = node;
+                node->mNext = nullptr;
+            }else{
+                node->mNext = mNodes[index];
+                mNodes[index] = node;
+            }
+            mSize++;
+            return true;
+        }
+
+        bool isExist(size_t index, const KeyType& key){
+            if(index >= mBucketsNumber) return false;
+            auto head = mNodes[index];
+            if(!head) return false;
+            if(ValueTraits::getKey(head->mValue) == key){
                 return true;
+            }else{
+                while(head->mNext){
+                    if(ValueTraits::getKey(head->mNext->mValue) == key){
+                        return true;
+                    }
+                    head = head->mNext;
+                }
             }
-            else
-            {
-                return false;
-            }
+            return false;
         }
 
         bool eraseNode(size_t index, const KeyType& key){
+            if(index >= mBucketsNumber) return false;
             auto head = mNodes[index];
             if(!head) return false;
             if(ValueTraits::getKey(head->mValue) == key){
@@ -234,6 +244,8 @@ namespace RedisDataStructure
         using ValueTraits =  HtValueTraits<T>;
         using KeyType = typename ValueTraits::KeyType;
         using ValueType = typename ValueTraits::ValueType;
+        using Iterator = RedisHashIterator<HashNode<T>, Hash<T, Hasher>* >;
+        using ConstIterator = RedisHashIterator<const HashNode<T>, const Hash<T, Hasher>* >;
     public:
         Hash() : mBucketsNumber(4), mBucketsMask(3), mRehashIndex(-1), 
                  mLoadFactor(1.0f), mShrinkFactor(0.1f) {
@@ -332,6 +344,49 @@ namespace RedisDataStructure
         }
         
     public:
+        Iterator begin() {
+            //if rehashing, force to compelete rehash
+            if(isReHashing()){
+                rehash(mActive->mBucketsNumber); 
+            } 
+            int index = 0;
+            while(!mActive->getBucketHead(index)){
+                index++;
+            }
+            if(index >= mActive->mBucketsNumber){
+                return Iterator(nullptr, this);
+            }
+            return Iterator(mActive->mNodes[0], this); 
+        }
+        Iterator end() { 
+            //if rehashing, force to compelete rehash
+            if(isReHashing()){
+                rehash(mActive->mBucketsNumber); 
+            }
+            return Iterator(nullptr, this); 
+        }
+        ConstIterator cbegin() {
+            //if rehashing, force to compelete rehash
+            if(isReHashing()){
+                rehash(mActive->mBucketsNumber); 
+            }
+            int index = 0;
+            while(!mActive->getBucketHead(index)){
+                index++;
+            }
+            if(index >= mActive->mBucketsNumber){
+                return ConstIterator(nullptr, this);
+            }
+            return ConstIterator(mActive->mNodes[0], this); 
+        }
+        ConstIterator cend() {
+            //if rehashing, force to compelete rehash
+            if(isReHashing()){
+                rehash(mActive->mBucketsNumber); 
+            }
+            return ConstIterator(nullptr, this); 
+        }
+        
         bool erase(const KeyType& key){
             size_t index = mHasher(key) & mBucketsMask;
             if(isReHashing() || isNeedReHash()){
@@ -349,6 +404,39 @@ namespace RedisDataStructure
                 rehash();
             }
             return status;
+        }
+
+        bool isExist(const KeyType& key){
+            size_t index = mHasher(key) & mBucketsMask;
+            if(isReHashing() || isNeedReHash()){
+                rehash();
+            }
+            bool status = true;
+            if(isReHashing()){
+                if(!mBackup->isExist(index, key)){
+                    status = mActive->isExist(mHasher(key) & (mActive->mBucketsNumber - 1), key);
+                }
+            }else{
+                status = mActive->isExist(index, key);
+            }
+            return status;
+        }
+
+        HashNode<T>* next(HashNode<T>* node){
+            //if rehashing, force to compelete rehash
+            if(isReHashing()){
+                rehash(mActive->mBucketsNumber); 
+            }
+            if(node->mNext){
+                return node->mNext;
+            }
+            auto key = ValueTraits::getKey(node->mValue);
+            size_t index = (key & mBucketsMask) + 1;
+            while(!mActive->getBucketHead(index)){
+                index++;
+            }
+            if(index >= mBucketsNumber) return nullptr;
+            return mActive->getBucketHead(index);
         }
 
         void printHash(){

@@ -22,7 +22,7 @@ public:
 	}
 };
 
-TEST_F(TestHash, HashHasherTest)
+TEST_F(TestHash, HashMapHasherTest)
 {
     RedisDataStructure::HashFunction<std::string> hasher;
 	size_t code1 = hasher("hello") % 4;
@@ -31,7 +31,7 @@ TEST_F(TestHash, HashHasherTest)
 	EXPECT_EQ(code2, 0);
 }
 
-TEST_F(TestHash, HashInsertTest)
+TEST_F(TestHash, HashMapInsertTest)
 {
     RedisDataStructure::HashMap<std::string, int> hash;
     hash.insert("hello", 1);
@@ -48,7 +48,7 @@ TEST_F(TestHash, HashInsertTest)
 	EXPECT_EQ(v3, 3);
 }
 
-TEST_F(TestHash, HashEraseTest)
+TEST_F(TestHash, HashMapEraseTest)
 {
     RedisDataStructure::HashMap<std::string, int> hash;
     hash.insert("hello", 1);
@@ -63,7 +63,7 @@ TEST_F(TestHash, HashEraseTest)
 	EXPECT_EQ(hash.get("world"), 2);
 }
 
-TEST_F(TestHash, HashRehashTest)
+TEST_F(TestHash, HashMapRehashTest)
 {
     RedisDataStructure::HashMap<std::string, int> hash;
     hash.insert("hello", 1);

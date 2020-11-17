@@ -71,7 +71,8 @@
         "xlocbuf": "cpp",
         "xlocmes": "cpp",
         "clocale": "cpp",
-        "csignal": "cpp"
+        "csignal": "cpp",
+        "*.ipp": "cpp"
     },
     "cmake.configureSettings": {
         "CMAKE_TOOLCHAIN_FILE": "D:/Code/vcpkg/scripts/buildsystems/vcpkg.cmake",
