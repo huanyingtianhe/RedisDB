@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <hash.h>
+#include <vector>
 
 class TestHash : public testing::Test
 {
@@ -89,6 +90,63 @@ TEST_F(TestHash, HashMapRehashTest)
 	EXPECT_EQ(v3, 3);
 	EXPECT_EQ(v4, 4);
 	EXPECT_EQ(v5, 5);
+}
+
+TEST_F(TestHash, HashMapIteratorTest){
+	RedisDataStructure::HashMap<std::string, int> hash;
+    hash.insert("hello", 1);
+    hash.insert("world", 2);
+	hash.insert("zi", 3);
+	hash.insert("ti", 4);
+	hash.insert("yi", 5);
+	hash.printHash();
+	std::vector<std::pair<std::string, int>> expect1 = {{"zi", 3}, {"world", 2}, {"hello", 1},  {"ti", 4}, {"yi", 5}};
+	std::vector<std::pair<std::string, int>> expect2 = {{"zi", 3}, {"hello", 1}, {"ti", 4}, {"world", 2},  {"yi", 5}};
+
+	int i = 0;
+	for(auto it = hash.begin(); it != hash.end(); it++){
+		EXPECT_EQ(*it, expect1[i++]);
+	}
+	hash.printHash();
+	//trigger rehash
+	EXPECT_EQ(hash.get("hello"), 1);
+	hash.printHash();
+	i = 0;
+	for(auto it = hash.begin(); it != hash.end(); it++){
+		EXPECT_EQ(*it, expect2[i++]);
+	}
+	hash.printHash();
+
+}
+
+TEST_F(TestHash, HashMapScanTest){
+	RedisDataStructure::HashMap<std::string, int> hash;
+    hash.insert("hello", 1);
+    hash.insert("world", 2);
+	hash.insert("zi", 3);
+	hash.insert("ti", 4);
+	hash.insert("yi", 5);
+	std::vector<std::pair<std::string, int>> re1, re2;
+	std::set<std::pair<std::string, int>> target = {{"hello", 1}, {"world", 2}, {"zi", 3}, {"ti", 4}, {"yi", 5}};
+	hash.printHash();
+	int v = 0;
+	do {
+		v = hash.scan(v, re1);
+	}while(v != 0);
+	std::set<std::pair<std::string, int>> tmp1(re1.begin(), re1.end());
+	EXPECT_EQ(tmp1, target);
+	//trigger rehash happens
+	EXPECT_EQ(hash.get("hello"), 1);
+	hash.printHash();
+	v = 0;
+	do {
+		v = hash.scan(v, re2);
+	}while(v != 0);
+	std::set<std::pair<std::string, int>> tmp2(re2.begin(), re2.end());
+	EXPECT_EQ(tmp2, target);
+	//if rehash happens, the re1 and re2 should be different.
+	EXPECT_NE(re1, re2);
+
 }
 
 int main(int argc, char **argv)

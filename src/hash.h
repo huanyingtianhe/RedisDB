@@ -17,6 +17,7 @@ namespace RedisDataStructure
     {
         using KeyType = T ;
         using ValueType = T ;
+        using EncType = T;
 
         template <class Ty>
         static const KeyType &getKey(const Ty &value)
@@ -29,6 +30,12 @@ namespace RedisDataStructure
         {
             return value;
         }
+
+        template <class Ty>
+        static const ValueType &getEnc(const Ty &value)
+        {
+            return value;
+        }
     };
 
     //hash map's node is std::pair, this partial template specialization is for the hashMap node only
@@ -37,6 +44,7 @@ namespace RedisDataStructure
     {
         using KeyType = typename std::remove_cv<typename T::first_type>::type;
         using ValueType = typename T::second_type;
+        using EncType = T;
 
         template <class Ty>
         static const KeyType &getKey(const Ty &value)
@@ -49,6 +57,11 @@ namespace RedisDataStructure
         {
             return value.second;
         }
+        template <class Ty>
+        static const ValueType &getEnc(const Ty &value)
+        {
+            return value;
+        }
     };
 
     template <class T>
@@ -59,6 +72,7 @@ namespace RedisDataStructure
 
         using KeyType =  typename valueTraitsType::KeyType ;
         using ValueType = typename valueTraitsType::ValueType;
+        using EncType = typename valueTraitsType::EncType;
 
         template <class Ty>
         static const KeyType &getKey(const Ty &value)
@@ -71,11 +85,21 @@ namespace RedisDataStructure
         {
             return valueTraitsType::getValue(value);
         }
+
+        template <class Ty>
+        static const ValueType &getEnc(const Ty &value)
+        {
+            return valueTraitsType::getEnc(value);
+        }
     };
 
     template <typename T>
     struct HashNode : public Util::noncopyable
     {
+        using ValueTraits = HtValueTraits<T>;
+        using KeyType = typename ValueTraits::KeyType;
+        using ValueType = typename ValueTraits::ValueType;
+        using EncType = typename ValueTraits::EncType;
         T mValue;
         HashNode *mNext;
         HashNode(const T& v) : mValue(v), mNext(nullptr) {}
@@ -89,6 +113,7 @@ namespace RedisDataStructure
         using ValueTraits = HtValueTraits<T>;
         using KeyType = typename ValueTraits::KeyType;
         using ValueType = typename ValueTraits::ValueType;
+        using EncType = typename ValueTraits::EncType;
 
         HashTable(size_t buck) : mSize(0), mBucketsNumber(buck)
         {
@@ -110,6 +135,7 @@ namespace RedisDataStructure
         }
 
         HashNode<T>* getBucketHead(size_t index){
+            if(index >= mBucketsNumber) return nullptr;
             return mNodes[index];
         }
 
@@ -238,6 +264,60 @@ namespace RedisDataStructure
         }
     };
 
+    template <typename T, typename TablePtr>
+    class RedisHashIterator : public std::iterator<std::forward_iterator_tag, T, ptrdiff_t, T *, T &>
+    {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using DataType = typename T::EncType;
+        using value_type = DataType;
+        using difference_type = std::ptrdiff_t;
+        using pointer = DataType *;
+        using reference = DataType &;
+
+    public:
+        RedisHashIterator(T *ptr, TablePtr table) : mPtr(ptr), mTablePtr(table) {}
+        RedisHashIterator(const RedisHashIterator<T, TablePtr> &other)
+        {
+            mPtr = other.mPtr;
+            mTablePtr = other.mTablePtr;
+        };
+        RedisHashIterator<T, TablePtr> &operator=(const RedisHashIterator<T, TablePtr> &other)
+        {
+            mPtr = other.mPtr;
+            mTablePtr = other.mTablePtr;
+        };
+        //RedisBidirectionalIterator(RedisBidirectionalIterator<T> &&other) = delete;
+        //RedisBidirectionalIterator<T> &operator = (RedisBidirectionalIterator<T> &&other) = delete;
+        ~RedisHashIterator() {}
+
+        value_type& operator*() { return mPtr->mValue; }
+        const value_type& operator*() const { return mPtr->mValue; }
+        value_type* operator->() { return &mPtr->mValue; }
+        value_type* getPtr() const { return &mPtr->mValue; }
+        const value_type* getConstPtr() const { return &mPtr->mValue; }
+
+        RedisHashIterator<T, TablePtr> &operator++()
+        {
+            mPtr = mTablePtr->next(mPtr);
+            return (*this);
+        }
+
+        RedisHashIterator<T, TablePtr> operator++(int)
+        {
+            auto temp(*this);
+            mPtr = mTablePtr->next(mPtr);
+            return temp;
+        }
+
+        bool operator==(const RedisHashIterator<T, TablePtr> &rawIterator) const { return (&mPtr->mValue == rawIterator.getConstPtr()); }
+        bool operator!=(const RedisHashIterator<T, TablePtr> &rawIterator) const { return (&mPtr->mValue != rawIterator.getConstPtr()); }
+
+    protected:
+        T *mPtr;
+        TablePtr mTablePtr;
+    };
+
     //remove copy constructor and copy assignment support
     template <typename T, typename Hasher>
     class Hash: public Util::noncopyable
@@ -246,8 +326,8 @@ namespace RedisDataStructure
         using ValueTraits =  HtValueTraits<T>;
         using KeyType = typename ValueTraits::KeyType;
         using ValueType = typename ValueTraits::ValueType;
-        using Iterator = RedisHashIterator<HashNode<T>, Hash<T, Hasher>* >;
-        using ConstIterator = RedisHashIterator<const HashNode<T>, const Hash<T, Hasher>* >;
+        using Iterator = RedisHashIterator<HashNode<T>, Hash<T, Hasher>*>;
+        using ConstIterator = RedisHashIterator<const HashNode<T>, const Hash<T, Hasher>*>;
     public:
         Hash() : mBucketsNumber(4), mBucketsMask(3), mRehashIndex(-1), 
                  mLoadFactor(1.0f), mShrinkFactor(0.1f) {
@@ -315,13 +395,16 @@ namespace RedisDataStructure
             return init;
         }
 
-        void rehash(int step = 2, bool isExpand = true){
+        void rehash(int step = 2, bool isAuto = true){
             //if first time rehash, new backup hashtable
             if(mRehashIndex == -1){
                 mBucketsNumber = getNextPower2(mActive->mSize);
                 mBackup = new HashTable<T>(mBucketsNumber);
                 startReHashing();
                 mBucketsMask = mBucketsNumber - 1;
+            }
+            if(isAuto){
+                step = calculateReHashStep();
             }
             if(mRehashIndex < mActive->mBucketsNumber){
                 size_t endIndex = std::min(mRehashIndex + step, static_cast<int>(mActive->mBucketsNumber));
@@ -344,47 +427,53 @@ namespace RedisDataStructure
                 compeleteReHashing();
             }
         }
+
+        //bucket number is power of 2
+        size_t calculateReHashStep(){
+            return mActive->mBucketsNumber > mBackup->mBucketsNumber ? mActive->mBucketsNumber / mBackup->mBucketsNumber
+                                                                            : mBackup->mBucketsNumber / mActive->mBucketsNumber;
+        }
         
     public:
         Iterator begin() {
             //if rehashing, force to compelete rehash
             if(isReHashing()){
-                rehash(mActive->mBucketsNumber); 
+                rehash(mActive->mBucketsNumber, false); 
             } 
             int index = 0;
             while(!mActive->getBucketHead(index)){
                 index++;
             }
-            if(index >= mActive->mBucketsNumber){
+            if(index < mActive->mBucketsNumber && index >= mActive->mBucketsNumber){
                 return Iterator(nullptr, this);
             }
-            return Iterator(mActive->mNodes[0], this); 
+            return Iterator(mActive->getBucketHead(index), this); 
         }
         Iterator end() { 
             //if rehashing, force to compelete rehash
             if(isReHashing()){
-                rehash(mActive->mBucketsNumber); 
+                rehash(mActive->mBucketsNumber, false); 
             }
             return Iterator(nullptr, this); 
         }
         ConstIterator cbegin() {
             //if rehashing, force to compelete rehash
             if(isReHashing()){
-                rehash(mActive->mBucketsNumber); 
+                rehash(mActive->mBucketsNumber, false); 
             }
             int index = 0;
-            while(!mActive->getBucketHead(index)){
+            while(index < mActive->mBucketsNumber && !mActive->getBucketHead(index)){
                 index++;
             }
             if(index >= mActive->mBucketsNumber){
                 return ConstIterator(nullptr, this);
             }
-            return ConstIterator(mActive->mNodes[0], this); 
+            return ConstIterator(mActive->getBucketHead(index), this); 
         }
         ConstIterator cend() {
             //if rehashing, force to compelete rehash
             if(isReHashing()){
-                rehash(mActive->mBucketsNumber); 
+                rehash(mActive->mBucketsNumber, false); 
             }
             return ConstIterator(nullptr, this); 
         }
@@ -427,28 +516,30 @@ namespace RedisDataStructure
         HashNode<T>* next(HashNode<T>* node){
             //if rehashing, force to compelete rehash
             if(isReHashing()){
-                rehash(mActive->mBucketsNumber); 
+                rehash(mActive->mBucketsNumber, false); 
             }
             if(node->mNext){
                 return node->mNext;
             }
             auto key = ValueTraits::getKey(node->mValue);
-            size_t index = (key & mBucketsMask) + 1;
-            while(!mActive->getBucketHead(index)){
+            size_t index = (mHasher(key) & mBucketsMask) + 1;
+            while(index < mActive->mBucketsNumber && !mActive->getBucketHead(index)){
                 index++;
             }
             if(index >= mBucketsNumber) return nullptr;
             return mActive->getBucketHead(index);
         }
 
-        /*this scan function is from original redis dictscan function.
-         *it make use of the bit op. so that the scan will not emit any
-         *data while rehashing. the scan is different from the iterator,
-         *which will forece compelete rehash, while in original redis' 
-         *iterator, it will break the iterator process if rehash happens.
-         *TODO add op function to add output
+        /* this scan function is from original redis dictscan function.
+         * it make use of the bit operation, so that the scan will not miss any
+         * data while rehashing. the scan is different from the iterator,
+         * which will forece compelete rehash, while in original redis' 
+         * iterator, it will break the iterator process if rehash happens. besides,
+         * we make the rehash step to be related with the expand or shrink factor,
+         * thus make the scan do not produce duplicate result.
+         * TODO add op function to add output
          */
-        void scan(size_t v, std::vector<T>& values){
+        size_t scan(size_t v, std::vector<T>& values){
             HashTable<T> *t0, *t1;
             const HashNode<T> *de, *next;
             size_t m0, m1;
@@ -510,6 +601,7 @@ namespace RedisDataStructure
                     while (de) {
                         next = de->mNext;
                         //fn(privdata, de);
+                        values.push_back(de->mValue);
                         de = next;
                     }
 

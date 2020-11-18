@@ -95,18 +95,19 @@ namespace Util
     struct isPair<std::pair<T1, T2>> : std::true_type {};
 
     class BitsOp{
-        /* Function to reverse bits. Algorithm from:
-        * http://graphics.stanford.edu/~seander/bithacks.html#ReverseParallel 
-        */
-        static unsigned long rev(unsigned long v) {
-            unsigned long s = 8 * sizeof(v); // bit size; must be power of 2
-            unsigned long mask = ~0;
-            while ((s >>= 1) > 0) {
-                mask ^= (mask << s);
-                v = ((v >> s) & mask) | ((v << s) & ~mask);
+        public:
+            /* Function to reverse bits. Algorithm from:
+            * http://graphics.stanford.edu/~seander/bithacks.html#ReverseParallel 
+            */
+            static unsigned long rev(unsigned long v) {
+                unsigned long s = 8 * sizeof(v); // bit size; must be power of 2
+                unsigned long mask = ~0;
+                while ((s >>= 1) > 0) {
+                    mask ^= (mask << s);
+                    v = ((v >> s) & mask) | ((v << s) & ~mask);
+                }
+                return v;
             }
-            return v;
-        }
     };
 
 }; // namespace Util
