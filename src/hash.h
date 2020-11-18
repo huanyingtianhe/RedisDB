@@ -3,10 +3,12 @@
 
 #include <cstdlib>
 #include <string>
-#include "Util.h"
-#include "redisIterator.h"
 #include <stdexcept>
 #include <algorithm>
+#include <vector>
+
+#include "Util.h"
+#include "redisIterator.h"
 
 namespace RedisDataStructure
 {
@@ -437,6 +439,92 @@ namespace RedisDataStructure
             }
             if(index >= mBucketsNumber) return nullptr;
             return mActive->getBucketHead(index);
+        }
+
+        /*this scan function is from original redis dictscan function.
+         *it make use of the bit op. so that the scan will not emit any
+         *data while rehashing. the scan is different from the iterator,
+         *which will forece compelete rehash, while in original redis' 
+         *iterator, it will break the iterator process if rehash happens.
+         *TODO add op function to add output
+         */
+        void scan(size_t v, std::vector<T>& values){
+            HashTable<T> *t0, *t1;
+            const HashNode<T> *de, *next;
+            size_t m0, m1;
+
+            if (mActive->mSize == 0) return 0;
+
+            if (!isReHashing()) {
+                t0 = mActive;
+                m0 = t0->mBucketsNumber - 1;
+
+                /* Emit entries at cursor */
+                //if (bucketfn) bucketfn(privdata, &t0->table[v & m0]);
+                de = t0->getBucketHead(v & m0);
+                while (de) {
+                    next = de->mNext;
+                    //fn(privdata, de);
+                    values.push_back(de->mValue);
+                    de = next;
+                }
+
+                /* Set unmasked bits so incrementing the reversed cursor
+                * operates on the masked bits */
+                v |= ~m0;
+
+                /* Increment the reverse cursor */
+                v = Util::BitsOp::rev(v);
+                v++;
+                v = Util::BitsOp::rev(v);
+
+            } else {
+                t0 = mActive;
+                t1 = mBackup;
+
+                /* Make sure t0 is the smaller and t1 is the bigger table */
+                if (t0->mBucketsNumber > t1->mBucketsNumber) {
+                    t0 = mBackup;
+                    t1 = mActive;
+                }
+
+                m0 = t0->mBucketsNumber - 1;
+                m1 = t1->mBucketsNumber - 1;
+
+                /* Emit entries at cursor */
+                //if (bucketfn) bucketfn(privdata, &t0->table[v & m0]);
+                de = t0->getBucketHead(v & m0);
+                while (de) {
+                    next = de->mNext;
+                    //fn(privdata, de);
+                    values.push_back(de->mValue);
+                    de = next;
+                }
+
+                /* Iterate over indices in larger table that are the expansion
+                * of the index pointed to by the cursor in the smaller table */
+                do {
+                    /* Emit entries at cursor */
+                    //if (bucketfn) bucketfn(privdata, &t1->table[v & m1]);
+                    de = t1->getBucketHead(v & m1);
+                    while (de) {
+                        next = de->mNext;
+                        //fn(privdata, de);
+                        de = next;
+                    }
+
+                    /* Increment the reverse cursor not covered by the smaller mask.*/
+                    v |= ~m1;
+                    v = Util::BitsOp::rev(v);
+                    v++;
+                    v = Util::BitsOp::rev(v);
+
+                    /* Continue while bits covered by mask difference is non-zero */
+                } while (v & (m0 ^ m1));
+            }
+
+            return v;
+
         }
 
         void printHash(){
