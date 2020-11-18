@@ -13,11 +13,11 @@ public:
 	{
 		std::cout << "TearDownTestCase" << std::endl;
 	}
-	virtual void SetUp() //TEST跑之前会执行SetUp
+	virtual void SetUp()
 	{
 		std::cout << "SetUp" << std::endl;
 	}
-	virtual void TearDown() //TEST跑完之后会执行TearDown
+	virtual void TearDown()
 	{
 		std::cout << "TearDown" << std::endl;
 	}
