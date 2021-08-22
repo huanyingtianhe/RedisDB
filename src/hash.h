@@ -407,7 +407,7 @@ namespace RedisDataStructure
                 step = calculateReHashStep();
             }
             if(mRehashIndex < mActive->mBucketsNumber){
-                size_t endIndex = std::min(mRehashIndex + step, static_cast<int>(mActive->mBucketsNumber));
+                size_t endIndex = std::min(mRehashIndex + step, mActive->mBucketsNumber);
                 while(mRehashIndex < endIndex){
                     auto head = mActive->getBucketHead(mRehashIndex);
                     while(head){
@@ -640,13 +640,13 @@ namespace RedisDataStructure
     protected:
         HashTable<T>* mActive;
         HashTable<T>* mBackup;
-        int mBucketsNumber;
-        int mBucketsMask;
-        int mRehashIndex;
+        size_t mBucketsNumber;
+        size_t mBucketsMask;
+        size_t mRehashIndex;
         float mLoadFactor;
         float mShrinkFactor;
         Hasher mHasher;
-        const int MIN_BUCKETS_SIZE = 4;
+        const size_t MIN_BUCKETS_SIZE = 4;
     };
 
     template<typename K, typename V, typename Hasher = HashFunction<K>>

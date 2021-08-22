@@ -1,0 +1,32 @@
+language: cpp
+
+cache:
+  - ccache
+
+compiler:
+  - clang
+  - gcc
+
+install:
+  - cmake --version
+  - pip install --user cpp-coveralls
+
+script:
+  - cd $TRAVIS_BUILD_DIR
+  - mkdir build && cd build
+  - cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=TRUE -DBUILD_EXAMPLE=1
+  - make -j8
+  - ./example &
+  - PID=$!
+  - curl localhost:8080/hello
+  - curl localhost:8080/
+  - kill $PID
+  - cd ..
+  - coveralls -b build --exclude deps --verbose
+
+os: linux
+dist: trusty
+
+sudo: true
+
+# vim:shiftwidth=2

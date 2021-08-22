@@ -5,6 +5,7 @@
 #include <limits>
 #include <iterator>
 #include <cstdlib>
+#include <algorithm>
 #include "redisIterator.h"
 
 namespace RedisDataStructure

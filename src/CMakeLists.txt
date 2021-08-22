@@ -6,15 +6,27 @@ find_package(spdlog CONFIG REQUIRED)
 find_path(CACH_SPDLOG_INCLUDE_DIR spdlog/spdlog.h)
 message("spd log: ${CACH_SPDLOG_INCLUDE_DIR}")
 include_directories("${CACH_SPDLOG_INCLUDE_DIR}")
-add_library(RedisDBD SHARED SkipList.cpp)
+message("3rd dir: ${CMAKE_SOURCE_DIR}/3rd/asio_http/include")
+include_directories(${CMAKE_SOURCE_DIR}/3rd/asio_http/include)
+find_package(Boost 1.76.0 REQUIRED system)
 
-add_executable(RedisDB main.cpp SkipList.cpp)
-target_link_libraries(RedisDB PRIVATE spdlog::spdlog spdlog::spdlog_header_only)
+# generate shared target
+add_library(RedisDBD STATIC server.cpp SkipList.cpp)
+add_dependencies (RedisDBD asio_http)
+target_link_libraries(RedisDBD PRIVATE spdlog::spdlog spdlog::spdlog_header_only ${Boost_LIBRARIES} asio_http)
 
+# generate executable file
+add_executable(RedisDBServer server.cpp SkipList.cpp)
+add_dependencies (RedisDBServer asio_http)
+target_link_libraries(RedisDBServer PRIVATE spdlog::spdlog spdlog::spdlog_header_only ${Boost_LIBRARIES} asio_http)
+
+#add_executable(RedisDBClient client.cpp)
+#target_link_libraries(RedisDBClient PRIVATE spdlog::spdlog spdlog::spdlog_header_only ${Boost_LIBRARIES} asio_http)
 
 #special op for msvc
 IF(MSVC)
-    message("run here")
+    message("MSVC")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
 endif()
+message("src ok")
