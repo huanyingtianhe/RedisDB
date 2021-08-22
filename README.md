@@ -3,8 +3,8 @@ Implement Redis using c++.
 
 ### Features
 
-1. Base data structure: skiplist, hash table, ziplist, quicklist, intset, Rax
-2. Change IO model to c++ version netty or actor model
+1. Data structure: skiplist, hash table
+2. Network library: using boost asio / asio(c++20) instead of native io(epoll, iocp etc.)
 3. Provide multithread ability: lock manager or mvcc
 4. Distributed system feature(raft master elaction, consistent hash)
 6. Provide sql interface to access data
